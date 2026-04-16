@@ -80,19 +80,17 @@ export default function TambahTransaksi() {
 
         {/* switch income and expense */}
         <div className="flex bg-surface-container-low rounded-full p-1 mb-8 max-w-[240px] mx-auto border border-outline-variant/10 shadow-inner">
-          <button 
+          <button
             onClick={() => setTransactionType('expense')}
-            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-              transactionType === 'expense' ? 'bg-surface-bright text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-            }`}
+            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'expense' ? 'bg-surface-bright text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
           >
             Pengeluaran
           </button>
-          <button 
+          <button
             onClick={() => setTransactionType('income')}
-            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-              transactionType === 'income' ? 'bg-secondary text-on-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-            }`}
+            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'income' ? 'bg-secondary text-on-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+              }`}
           >
             Pemasukan
           </button>
@@ -130,9 +128,9 @@ export default function TambahTransaksi() {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-3xl transition-all border group ${isSelected
-                        ? 'bg-surface-container-highest border-primary/30 shadow-md ring-1 ring-primary/20 scale-105'
-                        : 'bg-surface-container-low hover:bg-surface-container-high border-outline-variant/5'
+                    className={`flex flex-col items-center justify-center p-4 rounded-3xl transition-all border group cursor-pointer ${isSelected
+                      ? 'bg-surface-container-highest border-primary/30 shadow-md ring-1 ring-primary/20 scale-105'
+                      : 'bg-surface-container-low hover:bg-surface-container-high border-outline-variant/5'
                       }`}
                   >
                     <div style={{ backgroundColor: `${cat.color}20` }} className="w-12 h-12 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
@@ -178,7 +176,7 @@ export default function TambahTransaksi() {
                 <button
                   key={suggestion}
                   onClick={() => setNote(suggestion)}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-[11px] font-medium text-primary-fixed-dim hover:bg-primary/10 transition-colors"
+                  className="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-[11px] font-medium text-primary-fixed-dim hover:bg-primary/10 transition-colors cursor-pointer"
                 >
                   {suggestion}
                 </button>
@@ -192,7 +190,7 @@ export default function TambahTransaksi() {
           <button
             disabled={loading}
             onClick={handleSave}
-            className="w-full py-5 rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold text-lg shadow-[0px_24px_48px_rgba(6,14,32,0.4)] active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait"
+            className="w-full py-5 rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold text-lg shadow-[0px_24px_48px_rgba(6,14,32,0.4)] active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait cursor-pointer"
           >
             {loading ? 'Menyimpan...' : 'Simpan Transaksi'}
           </button>

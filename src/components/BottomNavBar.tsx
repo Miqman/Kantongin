@@ -21,16 +21,10 @@ export default function BottomNavBar() {
         <span className="material-symbols-outlined mb-1" style={pathname === '/' ? { fontVariationSettings: "'FILL' 1" } : {}}>home</span>
         <span className="font-body text-[11px] font-medium tracking-wide uppercase">Beranda</span>
       </Link>
-      
+
       {/* Tambah */}
       <Link href="/tambah" className={getLinkClasses('/tambah')}>
-        {pathname === '/tambah' ? (
-          <div className="bg-primary/10 p-2 rounded-xl mb-1">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
-          </div>
-        ) : (
-          <span className="material-symbols-outlined mb-1">add_circle</span>
-        )}
+        <span className="material-symbols-outlined mb-1">add_circle</span>
         <span className="font-body text-[11px] font-medium tracking-wide uppercase">Tambah</span>
       </Link>
 

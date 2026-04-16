@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     let finalUserId = user?.id;
     if (!finalUserId && process.env.NODE_ENV === 'development') {
       finalUserId = 'dummy-user-id-1';
-    } else if (error || !user) {
+    } else if (error || !finalUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,7 +32,10 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    let finalUserId = user?.id;
+    if (!finalUserId && process.env.NODE_ENV === 'development') {
+      finalUserId = 'dummy-user-id-1';
+    } else if (authError || !finalUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -41,7 +44,7 @@ export async function POST(request: Request) {
 
     const budget = await prisma.budget.create({
       data: {
-        user_id: user.id,
+        user_id: finalUserId,
         category_id,
         limit_amount,
         period: period || 'monthly',

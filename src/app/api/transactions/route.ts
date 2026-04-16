@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     let finalUserId = user?.id;
     if (!finalUserId && process.env.NODE_ENV === 'development') {
       finalUserId = 'dummy-user-id-1';
-    } else if (error || !user) {
+    } else if (error || !finalUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     let finalUserId = user?.id;
     if (!finalUserId && process.env.NODE_ENV === 'development') {
       finalUserId = 'dummy-user-id-1';
-    } else if (authError || !user) {
+    } else if (authError || !finalUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

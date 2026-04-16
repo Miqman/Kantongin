@@ -28,8 +28,8 @@ export const useStore = create<AppState>((set, get) => ({
       const bdgData = await bdgRes.json();
 
       set({
-        transactions: Array.isArray(txData) && !txData.error ? txData : [],
-        budgets: Array.isArray(bdgData) && !bdgData.error ? bdgData : [],
+        transactions: Array.isArray(txData) ? txData : [],
+        budgets: Array.isArray(bdgData) ? bdgData : [],
         isLoading: false
       });
     } catch (error) {

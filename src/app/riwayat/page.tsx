@@ -13,7 +13,7 @@ export default function Riwayat() {
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
 
   // Fetch transactions exactly like on Dashboard
-  useEffect(() => {
+  const loadTransactions = () => {
     fetch('/api/transactions')
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text());
@@ -27,7 +27,31 @@ export default function Riwayat() {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadTransactions();
   }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      // Optimistic update
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Gagal menghapus data dari server');
+      }
+      // Re-trigger global store or similar if needed, here we just stick to local state optimistic
+    } catch (error) {
+      alert('Terjadi kesalahan koneksi saat menghapus. Mengembalikan data.');
+      loadTransactions(); // refresh
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    // For now, redirect to `/tambah?edit=${id}` or just notify
+    alert("Fitur edit akan datang! Transaksi ID: " + id);
+  };
 
   // Get unique categories natively from loaded transactions
   const uniqueCategories = Array.from(new Set(transactions.map(t => t.category_id)))
@@ -190,12 +214,15 @@ export default function Riwayat() {
                     return (
                       <TransactionItem 
                         key={trx.id}
+                        id={trx.id}
                         icon={trx.category?.icon || 'payments'}
                         category={trx.category?.name || 'Tanpa Kategori'}
                         vendor={trx.note || 'Transaksi Kriptik'}
                         amount={isIncome ? `+ Rp${absoluteAmountStr}` : `- Rp${absoluteAmountStr}`}
                         date={new Date(trx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
                         iconColorClass={isIncome ? "text-secondary" : "text-primary"}
+                        onDelete={() => handleDelete(trx.id)}
+                        onEdit={() => handleEdit(trx.id)}
                       />
                     );
                   })}

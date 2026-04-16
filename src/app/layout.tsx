@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,28 @@ const manrope = Manrope({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0F172A",
+};
+
 export const metadata: Metadata = {
   title: "Dompetku - Financial Luminary",
   description: "Modern, dynamic budget tracking and management",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Dompetku",
+  },
 };
 
 export default function RootLayout({

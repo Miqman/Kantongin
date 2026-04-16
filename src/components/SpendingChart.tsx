@@ -6,8 +6,10 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 export default function SpendingChart() {
   const { transactions, isLoading: loading } = useStore();
   const [data, setData] = useState<{ dateStr: string; dayName: string; fullDate: string; amount: number }[]>([]);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (!loading) {
       // Initialize last 7 days payload
       const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -42,12 +44,12 @@ export default function SpendingChart() {
         <span className="font-label text-[11px] font-medium text-on-surface-variant uppercase tracking-widest">7 Hari Terakhir</span>
       </div>
       <div className="bg-surface-container-lowest p-6 rounded-[2rem] h-64 border border-outline-variant/5">
-        {loading ? (
+        {!mounted || loading ? (
           <div className="w-full h-full flex justify-center items-center">
             <p className="text-on-surface-variant/50 text-sm animate-pulse font-medium">Menganalisis pengeluaran...</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+          <ResponsiveContainer width="99%" height={200}>
             <BarChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
               <XAxis 
                 dataKey="dayName" 
