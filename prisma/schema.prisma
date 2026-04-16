@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  theme_pref   String   @default("dark")
+  sheets_token Json?
+  created_at   DateTime @default(now())
+
+  transactions Transaction[]
+  categories   Category[]
+  budgets      Budget[]
+}
+
+model Category {
+  id         String  @id @default(uuid())
+  user_id    String
+  name       String
+  icon       String
+  color      String
+  is_default Boolean @default(false)
+
+  user         User          @relation(fields: [user_id], references: [id])
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  user_id     String
+  amount      Decimal
+  category_id String
+  note        String?
+  date        DateTime
+  created_at  DateTime @default(now())
+
+  user     User     @relation(fields: [user_id], references: [id])
+  category Category @relation(fields: [category_id], references: [id])
+}
+
+model Budget {
+  id           String  @id @default(uuid())
+  user_id      String
+  category_id  String
+  limit_amount Decimal
+  period       String  @default("monthly")
+
+  user     User     @relation(fields: [user_id], references: [id])
+  category Category @relation(fields: [category_id], references: [id])
+}
