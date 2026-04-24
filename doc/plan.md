@@ -1,291 +1,230 @@
-# Project Plan — Aplikasi Pencatatan Keuangan Pribadi
-
-> **Visi:** Membuat pencatatan keuangan pribadi menjadi kebiasaan mudah yang bisa dilakukan dalam hitungan detik, kapan saja dan di mana saja.
-
----
-
-## Ringkasan Eksekutif
-
-Aplikasi web mobile-first yang dirancang untuk membantu pengguna mencatat, mengelola, dan memantau pengeluaran keuangan sehari-hari secara sederhana, cepat, dan ringan. Fokus pada kecepatan input ≤10 detik, kejelasan data, dan pengalaman pengguna yang intuitif di perangkat seluler. Tidak memerlukan fitur perbankan kompleks.
-
-Aplikasi dapat **digunakan tanpa login** (mode tamu) — semua data disimpan secara lokal di perangkat. Pengguna dapat membuat akun kapan saja untuk mengaktifkan sinkronisasi cloud, backup, dan fitur lanjutan.
+# Product Requirements Document
+## Aplikasi Pencatatan Keuangan Pribadi — FinanceTrack
+**Versi 1.0 · April 2025 · CONFIDENTIAL**
 
 ---
 
-## Target Pengguna
+## 1. Executive Summary
 
-| Persona | Karakteristik | Kebutuhan Utama |
+### 1.1 Problem Statement
+Mayoritas masyarakat Indonesia — khususnya kalangan mahasiswa, young professional, dan freelancer — gagal mempertahankan kebiasaan mencatat pengeluaran karena aplikasi keuangan yang ada terlalu kompleks dan lambat untuk digunakan sehari-hari. Friction onboarding yang tinggi (wajib registrasi, setup akun) memperburuk adopsi awal.
+
+### 1.2 Proposed Solution
+Aplikasi web mobile-first (PWA) yang memungkinkan pengguna mencatat transaksi dalam ≤10 detik tanpa registrasi, dengan mode tamu berbasis penyimpanan lokal. Pengguna dapat membuat akun kapan saja untuk mengaktifkan sinkronisasi cloud, backup, dan fitur lanjutan — tanpa kehilangan data.
+
+### 1.3 Success Criteria (KPIs)
+
+| Metrik | Target | Cara Ukur |
 |---|---|---|
-| Mahasiswa / Gen-Z | Terbatas budget, sering transaksi kecil, aktif di mobile | Input cepat, kategori sederhana, ringkasan harian |
-| Pekerja / Young Professional | Pendapatan tetap, ingin kontrol pengeluaran, tidak mau ribet | Dashboard bulanan, budget alert, ekspor data |
-| Freelancer / UMKM | Arus kas tidak tetap, butuh pencatatan terstruktur | Filter transaksi, riwayat lengkap, backup |
-
-> **Batasan fase awal:** Tidak menargetkan fitur investasi, pinjaman, atau integrasi bank otomatis.
-
----
-
-## Mode Tamu (Tanpa Login)
-
-Aplikasi mendukung dua mode penggunaan untuk menurunkan friction onboarding semaksimal mungkin:
-
-| | Mode Tamu | Mode Akun |
-|---|---|---|
-| **Login diperlukan** | Tidak | Ya |
-| **Penyimpanan data** | `localStorage` + IndexedDB (lokal) | Supabase cloud |
-| **Input transaksi** | ✅ | ✅ |
-| **Dashboard & riwayat** | ✅ | ✅ |
-| **Manajemen kategori** | ✅ | ✅ |
-| **Filter & pencarian** | ✅ | ✅ |
-| **Preferensi tema** | ✅ (tersimpan lokal) | ✅ (tersimpan di profil) |
-| **Sinkronisasi Google Sheets** | ❌ | ✅ |
-| **Budget & notifikasi** | ❌ | ✅ |
-| **Ekspor CSV / PDF** | ✅ | ✅ |
-| **Sinkronisasi multi-device** | ❌ | ✅ |
-| **Backup & pemulihan data** | ❌ | ✅ |
-
-### Alur Onboarding Mode Tamu
-
-```
-Buka aplikasi
-└── Tanpa halaman login → langsung ke Beranda (mode tamu)
-    ├── Gunakan semua fitur inti secara normal
-    └── Banner/prompt non-intrusif: "Buat akun untuk backup & sync"
-        └── Tap → halaman registrasi → migrasi data lokal ke cloud otomatis
-```
-
-### Kebijakan Data Mode Tamu
-
-- Data disimpan sepenuhnya di perangkat pengguna (`localStorage` + IndexedDB)
-- Tidak ada data yang dikirim ke server selama mode tamu aktif
-- Saat pengguna membuat akun, semua data lokal **dimigrasikan otomatis** ke cloud — tidak ada yang hilang
-- Jika pengguna menghapus cache browser, data mode tamu akan ikut terhapus — pengguna diperingatkan saat pertama kali menggunakan aplikasi
-
-### Implementasi Teknis
-
-- Gunakan **Dexie.js** (wrapper IndexedDB) sebagai storage engine untuk mode tamu
-- Buat abstraksi layer data sehingga komponen tidak perlu tahu apakah data berasal dari lokal atau Supabase
-- Saat login pertama kali: jalankan fungsi `migrateGuestToCloud(userId)` yang membaca semua record lokal dan menulis ke Supabase dalam batch
-- Setelah migrasi berhasil, bersihkan data lokal
+| Waktu input transaksi | ≤10 detik | Stopwatch user testing, n=5 |
+| Retensi D7 (mode akun) | ≥40% | Cohort analysis Supabase |
+| Lighthouse Performance Score | ≥90 (mobile) | Lighthouse CI di setiap deploy |
+| Lighthouse Accessibility Score | 100 | Lighthouse CI |
+| Konversi tamu → akun | ≥20% dalam 7 hari | Event tracking (Plausible/Umami) |
 
 ---
 
-## Timeline Proyek
+## 2. User Experience & Functionality
 
-```
-Minggu 1–6    │ Phase 1 — MVP         │ Foundation + core features
-Minggu 7–12   │ Phase 2 — Growth      │ Integrasi + budget + ekspor
-Minggu 13–20  │ Phase 3 — Scale       │ Multi-device + OCR
-```
+### 2.1 User Personas
 
----
+| Persona | Karakteristik | Pain Point Utama | Kebutuhan Kritis |
+|---|---|---|---|
+| Mahasiswa / Gen-Z | Transaksi kecil & sering, aktif mobile | Aplikasi lain terlalu lambat | Input ≤10 detik, kategori sederhana |
+| Young Professional | Pendapatan tetap, ingin kontrol | Tidak sempat review pengeluaran | Dashboard bulanan, budget alert |
+| Freelancer / UMKM | Arus kas tidak tetap | Butuh riwayat terstruktur | Filter, ekspor CSV/PDF, backup |
 
-## Phase 1 — MVP (Minggu 1–6)
+### 2.2 User Stories & Acceptance Criteria
 
-### Minggu 1–2 · Foundation & Setup
+#### US-01 · Input Transaksi Cepat
+> Sebagai pengguna tamu, saya ingin mencatat pengeluaran tanpa registrasi sehingga saya bisa langsung mulai tanpa hambatan.
 
-- Setup project: Next.js + TailwindCSS (`darkMode: 'class'`, CSS variables)
-- Supabase project: auth + skema database awal
-- PWA manifest + service worker (offline input → sync saat online)
-- Sistem tema gelap/terang — default dark (`#0F172A`), simpan preferensi ke `localStorage` + profil
-- Shell navigasi bottom bar + routing (Beranda | ➕ Tambah | Riwayat | Profil)
-- **Mode tamu:** aplikasi langsung bisa digunakan tanpa login — data disimpan via Dexie.js (IndexedDB)
-- Abstraksi layer data: `useDataStore()` hook yang otomatis routing ke lokal (mode tamu) atau Supabase (mode akun)
-- Banner non-intrusif di Beranda: ajakan buat akun untuk backup & sync
-- Auth: Email + Password dan Google OAuth (opsional, bisa dilakukan kapan saja)
-- Fungsi migrasi `migrateGuestToCloud(userId)` saat pertama kali login
+**Acceptance Criteria:**
+- Aplikasi dapat digunakan penuh tanpa login — tidak ada redirect ke halaman auth
+- FAB ➕ membuka form dengan keyboard numerik aktif otomatis dalam ≤300ms
+- Form mencakup: Nominal (required), Kategori (required, grid 3 kolom), Catatan (opsional), Tanggal (default hari ini, bisa diubah)
+- Tombol Simpan → toast konfirmasi dalam ≤500ms → kembali ke Beranda
+- Alur lengkap (tap FAB → konfirmasi tersimpan) selesai dalam ≤10 detik di jaringan 3G/4G
 
-### Minggu 3–4 · Input Transaksi ≤10 Detik
+#### US-02 · Dashboard & Ringkasan
+> Sebagai pengguna, saya ingin melihat ringkasan pengeluaran hari ini dan bulan ini sehingga saya tahu kondisi keuangan tanpa harus menghitung manual.
 
-- FAB ➕ → keyboard numerik otomatis fokus ke field Nominal
-- Grid kategori (3 kolom, ikon + warna per kategori)
-- Field catatan opsional dengan auto-suggest dari riwayat
-- Tanggal otomatis dengan opsi override manual
-- Tombol Simpan → toast konfirmasi ✅ → kembali ke Beranda
-- Set kategori default (7–10 item: Makan, Transport, Belanja, Hiburan, dll.)
+**Acceptance Criteria:**
+- Kartu ringkasan menampilkan: Total Hari Ini | Total Bulan Ini | Sisa Budget (jika budget diset)
+- Grafik batang 7 hari terakhir menggunakan warna semantik (merah/oranye untuk pengeluaran, hijau untuk pemasukan)
+- List 5 transaksi terbaru scrollable, tap item membuka detail/edit
+- Data grafik ter-render dalam ≤1 detik pada dataset 10.000 record
 
-**Target:** ≤10 detik dari tap pertama hingga konfirmasi tersimpan.
+#### US-03 · Manajemen Riwayat
+> Sebagai pengguna, saya ingin menyaring dan mencari transaksi lama sehingga saya bisa melacak pengeluaran per kategori atau periode.
 
-### Minggu 5–6 · Dashboard & Riwayat
+**Acceptance Criteria:**
+- Filter: rentang tanggal, kategori (multi-select), kata kunci (debounce 300ms)
+- Swipe kiri pada item → hapus (dengan konfirmasi dialog)
+- Swipe kanan pada item → edit cepat (buka form pra-isi)
+- Hasil filter muncul dalam ≤200ms untuk dataset ≤10.000 record
 
-- Kartu ringkasan: Total Hari Ini | Total Bulan Ini | Sisa Budget
-- Grafik batang 7 hari (warna semantik: merah/oranye untuk pengeluaran)
-- List transaksi terbaru — scrollable, tap untuk detail/edit
-- Swipe kiri → hapus, swipe kanan → edit
-- Filter: rentang tanggal, kategori, kata kunci
-- CRUD kategori: tambah, edit, hapus + pilih ikon
+#### US-04 · Migrasi Data Tamu → Akun
+> Sebagai pengguna tamu yang ingin backup, saya ingin membuat akun dan data lokal saya otomatis terpindah sehingga tidak ada data yang hilang.
 
----
+**Acceptance Criteria:**
+- Banner non-intrusif di Beranda menampilkan ajakan buat akun (dapat di-dismiss per sesi)
+- Saat registrasi pertama kali, fungsi `migrateGuestToCloud()` berjalan otomatis di background
+- Migrasi dalam batch; jika gagal sebagian, sistem melakukan rollback dan menyimpan log untuk retry
+- Setelah migrasi sukses, data lokal IndexedDB dibersihkan
+- Pengguna melihat notifikasi sukses dengan jumlah record yang berhasil dipindahkan
 
-## Phase 2 — Growth (Minggu 7–12)
+#### US-05 · Ekspor Data
+> Sebagai pengguna (mode akun atau tamu), saya ingin mengekspor transaksi sehingga saya bisa menganalisis data di luar aplikasi.
 
-### Minggu 7–9 · Sinkronisasi Google Sheets
+**Acceptance Criteria:**
+- Ekspor CSV: download native browser, kolom (Tanggal, Nominal, Kategori, Catatan, Tipe)
+- Ekspor PDF: ringkasan bulanan via jsPDF, client-side tanpa request ke server
+- Filter rentang tanggal sebelum ekspor
 
-- OAuth 2.0 consent screen + penyimpanan `access_token` & `refresh_token`
-- Auto-create sheet baru jika belum ada
-- Mapping kolom: `Tanggal | Nominal | Kategori | Catatan | Tipe | ID Transaksi`
-- Sync mode: 1-arah (App → Sheets) untuk menghindari konflik
-- Manual sync + auto-sync harian (jika online)
-- Token refresh + re-auth fallback tanpa memblokir fitur utama
-- Indikator status sync di UI
-
-> ⚠️ **Penting:** Submit OAuth consent screen verification ke Google sedini mungkin (bisa memakan 1–2 minggu approval).
-
-### Minggu 9–11 · Budget Bulanan & Notifikasi
-
-- Set limit bulanan per kategori
-- Kartu "Sisa Budget" di dashboard
-- In-app alert pada 80% dan 100% dari limit
-- Push notification via PWA
-
-### Minggu 12 · Ekspor Data
-
-- Pilih rentang tanggal ekspor
-- Unduh CSV (native browser)
-- Unduh PDF ringkasan (via jsPDF)
+### 2.3 Non-Goals (Batasan Eksplisit)
+Hal-hal berikut **TIDAK** dibangun dalam scope v1.0:
+- Integrasi bank otomatis / open banking API
+- Fitur investasi, pinjaman, atau produk keuangan
+- Multi-currency atau konversi mata uang
+- Laporan pajak atau akuntansi formal
+- Aplikasi native iOS/Android (hanya PWA)
+- OCR struk (dijadwalkan Phase 3, bukan v1.0)
 
 ---
 
-## Phase 3 — Scale (Minggu 13–20)
+## 3. Technical Specifications
 
-### Sinkronisasi Multi-Device
+### 3.1 Tech Stack
 
-- Real-time sync via Supabase Realtime
-- Manajemen sesi multi-device
-- Conflict resolution (last-write-wins untuk MVP)
-
-### Upload Struk & OCR Dasar
-
-- Input kamera → upload foto struk
-- OCR ekstraksi nominal + tanggal (Tesseract.js atau cloud API)
-- Konfirmasi pengguna sebelum menyimpan hasil OCR
-
----
-
-## Skema Database
-
-### `transactions`
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | uuid PK | Primary key |
-| `user_id` | uuid FK | Relasi ke tabel users |
-| `amount` | numeric | Nominal transaksi |
-| `category_id` | uuid FK | Relasi ke tabel categories |
-| `note` | text | Catatan opsional |
-| `date` | date | Tanggal transaksi |
-| `created_at` | timestamptz | Waktu dibuat |
-
-### `categories`
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | uuid PK | Primary key |
-| `user_id` | uuid FK | Relasi ke tabel users |
-| `name` | text | Nama kategori |
-| `icon` | text | Kode ikon |
-| `color` | text | Hex warna |
-| `is_default` | boolean | Kategori bawaan sistem |
-
-### `budgets`
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | uuid PK | Primary key |
-| `user_id` | uuid FK | Relasi ke tabel users |
-| `category_id` | uuid FK | Relasi ke tabel categories |
-| `limit_amount` | numeric | Batas pengeluaran |
-| `period` | text | `monthly` / `weekly` |
-
-### `users` (via Supabase Auth)
-
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| `id` | uuid PK | Primary key |
-| `email` | text | Email pengguna |
-| `theme_pref` | text | `dark` / `light` |
-| `sheets_token` | jsonb | Token Google Sheets (encrypted) |
-| `created_at` | timestamptz | Waktu registrasi |
-
----
-
-## Tech Stack
-
-| Layer | Pilihan | Catatan |
+| Layer | Teknologi | Catatan |
 |---|---|---|
 | Frontend | Next.js + TailwindCSS | `darkMode: 'class'`, CSS variables untuk tema |
-| Charting | Recharts | Grafik batang ringan |
-| PWA | Service Worker + manifest.json | Offline input → sync saat online |
-| Local Storage (mode tamu) | Dexie.js (IndexedDB) | Storage lokal untuk pengguna tanpa akun |
-| Backend / BaaS | Supabase | Auth, PostgreSQL, Edge Functions, Realtime |
-| Database | PostgreSQL (via Supabase) | RLS untuk keamanan per-user |
+| Charting | Recharts | Grafik batang ringan, SSR-friendly |
+| PWA | Service Worker + manifest.json | Offline input → sync queue saat online |
+| Local Storage (tamu) | Dexie.js (IndexedDB) | Storage engine mode tamu |
+| Backend / BaaS | Supabase | Auth, PostgreSQL, Realtime, Edge Functions |
 | Auth | Supabase Auth | Email+Password + Google OAuth (opsional) |
-| Google Sheets | `googleapis` npm package | OAuth 2.0, scope: `spreadsheets` |
+| Google Sheets | googleapis npm | OAuth 2.0, scope: spreadsheets — Phase 2 |
 | PDF Export | jsPDF | Client-side, tanpa server |
 | Hosting | Vercel (frontend) | CI/CD via GitHub Actions |
-| Analytics | Plausible / Umami | Anonim, tanpa cookie |
-| OCR (P2) | Tesseract.js / cloud API | Fase 3 |
+| Analytics | Plausible / Umami | Anonim, tanpa cookie, self-host opsional |
 
----
+### 3.2 Architecture Overview
 
-## Sistem Tema & Warna
-
-### Palet Utama
-
-| Konteks | Warna | Hex | Makna Psikologis |
-|---|---|---|---|
-| Background gelap (primary) | Slate 900 | `#0F172A` | Netral, fokus |
-| Background gelap (surface) | Slate 800 | `#1E293B` | Kedalaman |
-| Background terang (primary) | Gray 50 | `#F9FAFB` | Bersih |
-| Background terang (surface) | Cream | `#FEFCE8` | Hangat |
-| Pemasukan / Saldo / Target ✅ | Biru / Hijau | — | Kepercayaan & Stabilitas |
-| Pengeluaran / Alert / Melebihi Budget | Merah / Oranye | — | Urgensi & Peringatan |
-
-### Aturan Aksesibilitas
-
-- Kontras warna minimal **4.5:1** (WCAG 2.1 AA)
-- Semua indikator status dilengkapi **ikon + label teks** — tidak bergantung pada warna saja
-- Navigasi keyboard penuh + label ARIA
-
----
-
-## Persyaratan Non-Fungsional
-
-| Aspek | Target |
-|---|---|
-| Performa | LCP < 2.5s, TTI < 3s, input transaksi < 1s (jaringan 3G/4G) |
-| Keamanan | HTTPS wajib, sanitasi input, rate limiting auth, enkripsi data di transit & rest |
-| Aksesibilitas | WCAG 2.1 AA, kontras 4.5:1, navigasi keyboard, label ARIA |
-| Kompatibilitas | iOS Safari 15+, Android Chrome 90+, Firefox & Safari modern |
-| Skalabilitas | 10.000 user aktif bulanan pada infrastruktur awal |
-| Privasi | Tidak menjual data, opsi hapus akun permanen, kebijakan transparan |
-
----
-
-## Alur Navigasi
+Aplikasi menggunakan abstraksi layer data (`useDataStore()` hook) sebagai single interface yang secara transparan mengarahkan operasi CRUD ke Dexie.js (mode tamu) atau Supabase (mode akun). Komponen UI tidak perlu mengetahui asal data.
 
 ```
-Bottom Navigation
-├── 🏠  Beranda      → Dashboard (ringkasan + grafik + transaksi terbaru)
-├── ➕  Tambah (FAB) → Form input transaksi
-├── 📋  Riwayat      → List lengkap + filter + pencarian
-└── 👤  Profil       → Pengaturan tema, budget, Google Sheets, ekspor
+User Action
+  └── UI Component
+      └── useDataStore() hook  [abstraksi]
+          ├── [mode tamu]  → Dexie.js (IndexedDB)
+          └── [mode akun]  → Supabase Client SDK
+                                └── PostgreSQL (RLS)
 ```
 
-**Gestur:** Swipe kiri pada item riwayat → hapus | Swipe kanan → edit cepat
+### 3.3 Database Schema
 
----
+#### Tabel: `transactions`
 
-## Risiko & Mitigasi
-
-| Risiko | Dampak | Mitigasi |
+| Kolom | Tipe | Keterangan |
 |---|---|---|
-| Alur input > 10 detik | Nilai produk hilang | Prototype & time test di minggu pertama sebelum build fitur lain |
-| Google OAuth consent screen terlambat disetujui | Delay Phase 2 | Submit di minggu 1–2, bukan saat mulai Phase 2 |
-| Offline sync conflict | Data ganda / hilang | Gunakan IndexedDB (Dexie.js) sebagai buffer lokal dengan queue strategy |
-| OCR akurasi rendah | Frustrasi pengguna | Selalu tampilkan konfirmasi pengguna sebelum simpan hasil OCR |
-| Token Sheets kadaluarsa memblokir app | UX rusak | Re-auth hanya untuk fitur Sheets, tidak memblokir fitur utama |
-| Pengguna tamu menghapus cache browser | Data lokal hilang permanen | Tampilkan peringatan onboarding pertama kali; tampilkan prompt migrasi secara berkala |
-| Migrasi data tamu → cloud gagal sebagian | Data tidak lengkap setelah daftar | Jalankan migrasi dalam transaksi batch; rollback jika gagal; simpan log untuk retry |
+| `id` | uuid PK | Primary key, auto-generate |
+| `user_id` | uuid FK | Relasi ke tabel users (null untuk mode tamu lokal) |
+| `amount` | numeric | Nominal transaksi, wajib > 0 |
+| `category_id` | uuid FK | Relasi ke tabel categories |
+| `note` | text | Catatan opsional, max 255 karakter |
+| `date` | date | Tanggal transaksi |
+| `created_at` | timestamptz | Waktu dibuat, default NOW() |
+
+#### Tabel: `categories`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | uuid PK | Primary key |
+| `user_id` | uuid FK | Nullable — null berarti kategori default sistem |
+| `name` | text | Nama kategori, max 50 karakter |
+| `icon` | text | Kode ikon (emoji atau icon set) |
+| `color` | text | Hex warna (#RRGGBB) |
+| `is_default` | boolean | TRUE = kategori bawaan sistem, tidak bisa dihapus |
+
+#### Tabel: `budgets`
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| `id` | uuid PK | Primary key |
+| `user_id` | uuid FK | Hanya tersedia untuk mode akun |
+| `category_id` | uuid FK | Budget per kategori |
+| `limit_amount` | numeric | Batas pengeluaran, wajib > 0 |
+| `period` | text | Enum: `'monthly'` \| `'weekly'` |
+
+### 3.4 Integration Points
+
+| Integrasi | Phase | Auth | Catatan Kritis |
+|---|---|---|---|
+| Supabase Auth | Phase 1 | JWT | RLS wajib aktif di semua tabel |
+| Google OAuth (opsional) | Phase 1 | OAuth 2.0 | Scope minimal: openid, email, profile |
+| Google Sheets API | Phase 2 | OAuth 2.0 | Submit consent screen di minggu 1–2 (approval 1–2 minggu) |
+| Supabase Realtime | Phase 3 | JWT | Multi-device sync, conflict: last-write-wins |
+
+### 3.5 Security & Privacy
+- HTTPS wajib di semua environment (enforce via Vercel)
+- Row Level Security (RLS) aktif di semua tabel Supabase — user hanya bisa akses data miliknya sendiri
+- Sanitasi input di sisi client dan server (`amount` validasi > 0, `note` max 255 char)
+- Rate limiting pada endpoint auth (Supabase default + custom rule jika diperlukan)
+- Token Google Sheets disimpan terenkripsi di kolom `sheets_token` (jsonb) dengan enkripsi at-rest Supabase
+- Data mode tamu tidak dikirim ke server — sepenuhnya tersimpan di IndexedDB perangkat pengguna
+- Peringatan onboarding pertama: penghapusan cache browser akan menghapus data tamu permanen
+- Kebijakan penghapusan akun: semua data dihapus permanen dari Supabase dalam ≤30 hari
+- Tidak menjual atau berbagi data pengguna dengan pihak ketiga
+
+### 3.6 Non-Functional Requirements
+
+| Aspek | Target | Cara Ukur |
+|---|---|---|
+| Performa | LCP < 2.5s, TTI < 3s (3G/4G) | Lighthouse CI, WebPageTest |
+| Input Speed | Input transaksi < 1 detik setelah tap Simpan | Profiling React DevTools |
+| Aksesibilitas | WCAG 2.1 AA, kontras ≥4.5:1, navigasi keyboard penuh | Lighthouse Accessibility = 100 |
+| Kompatibilitas | iOS Safari 15+, Android Chrome 90+ | BrowserStack manual testing |
+| Skalabilitas | 10.000 MAU pada infrastruktur free tier awal | Load test Supabase pgbench |
+
+---
+
+## 4. Risks & Roadmap
+
+### 4.1 Phased Rollout
+
+| Phase | Timeline | Scope Utama | Exit Criteria |
+|---|---|---|---|
+| **MVP (v1.0)** | Minggu 1–6 | Mode tamu, input transaksi, dashboard, riwayat, CRUD kategori | Input ≤10 detik terbukti di user testing n=5 |
+| **v1.1 Growth** | Minggu 7–12 | Google Sheets sync, budget bulanan, notifikasi, ekspor CSV/PDF | Retensi D7 ≥40% pada cohort pertama 100 user |
+| **v2.0 Scale** | Minggu 13–20 | Multi-device sync (Realtime), OCR struk, backup & restore | 10.000 MAU, uptime ≥99.5% selama 30 hari |
+
+### 4.2 Technical Risks
+
+| Risiko | Dampak | Probabilitas | Mitigasi |
+|---|---|---|---|
+| Alur input > 10 detik di perangkat low-end | Tinggi — nilai produk hilang | Sedang | Prototype & stopwatch test di minggu 1 sebelum build fitur lain |
+| Google OAuth consent screen terlambat disetujui | Sedang — delay Phase 2 | Tinggi | Submit di minggu 1–2, bukan saat Phase 2 mulai |
+| Data tamu hilang karena cache browser dihapus | Sedang — kepercayaan pengguna | Sedang | Peringatan onboarding + prompt migrasi berkala |
+| Migrasi tamu → cloud gagal sebagian | Tinggi — data tidak lengkap | Rendah | Batch transaction + rollback otomatis + retry log |
+| Token Google Sheets expired memblokir app | Rendah — hanya fitur Sheets | Tinggi | Re-auth hanya trigger untuk fitur Sheets, tidak memblokir fitur utama |
+| IndexedDB tidak tersedia di browser tertentu | Sedang — mode tamu tidak berfungsi | Rendah | Fallback ke localStorage untuk data minimal; tampilkan warning |
+
+### 4.3 Implementation Guidelines
+
+#### ✅ DO (Selalu Lakukan)
+- Prototype alur input transaksi di minggu pertama dan ukur waktu sebelum build fitur lain
+- Submit Google OAuth consent screen verification di minggu 1–2
+- Jalankan Lighthouse CI di setiap pull request — block merge jika skor turun
+- Gunakan `useDataStore()` hook sebagai satu-satunya interface data — jangan akses Dexie/Supabase langsung dari komponen
+- Tulis unit test untuk `migrateGuestToCloud()` dengan kasus: sukses penuh, gagal sebagian, data kosong
+
+#### ❌ DON'T (Hindari)
+- Jangan build fitur Phase 2 sebelum alur input ≤10 detik terbukti — ini adalah north star metric
+- Jangan gunakan `WidthType.PERCENTAGE` pada tabel — tidak kompatibel lintas platform
+- Jangan akses Supabase langsung dari komponen UI — selalu lewat abstraksi layer
+- Jangan anggap offline-first selesai hanya dengan Service Worker — Dexie.js queue wajib untuk data persistence
 
 ---
 
