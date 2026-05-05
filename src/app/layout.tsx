@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
+import AppInitializer from '@/components/AppInitializer';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -65,6 +66,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${manrope.variable} font-body bg-surface text-on-surface antialiased min-h-screen pb-32`}
       >
+        <AppInitializer />
         {children}
       </body>
     </html>

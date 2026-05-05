@@ -4,53 +4,28 @@ import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import TransactionItem from '@/components/TransactionItem';
 
+import { useRouter } from 'next/navigation';
+import { useStore } from '@/store/useStore';
+
 export default function Riwayat() {
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { transactions, isLoading, deleteTransaction } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
 
   const [filterTime, setFilterTime] = useState<'THIS_MONTH' | 'ALL'>('THIS_MONTH');
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
 
-  // Fetch transactions exactly like on Dashboard
-  const loadTransactions = () => {
-    fetch('/api/transactions')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-        return res.json();
-      })
-      .then((data) => {
-        if (!data.error) setTransactions(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    loadTransactions();
-  }, []);
-
   const handleDelete = async (id: string) => {
     try {
-      // Optimistic update
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        throw new Error('Gagal menghapus data dari server');
-      }
-      // Re-trigger global store or similar if needed, here we just stick to local state optimistic
+      await deleteTransaction(id);
     } catch (error) {
-      alert('Terjadi kesalahan koneksi saat menghapus. Mengembalikan data.');
-      loadTransactions(); // refresh
+      alert('Terjadi kesalahan koneksi saat menghapus.');
     }
   };
 
+  const router = useRouter();
+
   const handleEdit = (id: string) => {
-    // For now, redirect to `/tambah?edit=${id}` or just notify
-    alert("Fitur edit akan datang! Transaksi ID: " + id);
+    router.push(`/tambah?edit=${id}`);
   };
 
   // Get unique categories natively from loaded transactions
@@ -187,7 +162,7 @@ export default function Riwayat() {
 
         {/* Transactions List Grouped by Date */}
         <section className="space-y-10">
-          {loading ? (
+          {isLoading ? (
              <div className="flex justify-center items-center py-20">
                <p className="font-medium text-on-surface-variant/50 animate-pulse">Menyelaraskan buku besar...</p>
              </div>

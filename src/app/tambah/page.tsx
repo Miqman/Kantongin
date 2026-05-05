@@ -1,44 +1,45 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
+import { useStore } from '@/store/useStore';
 
 export default function TambahTransaksi() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
 
+  const { categories, addTransaction, updateTransaction, transactions } = useStore();
+  
   // Functional States
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
-  const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   // UI States
   const [loading, setLoading] = useState(false);
-  const [fetchingCategories, setFetchingCategories] = useState(true);
 
-  // Fetch categories from Backend API
   useEffect(() => {
-    fetch('/api/categories')
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Gagal memuat kategori");
-        return res.json();
-      })
-      .then((data) => {
-        if (!data.error) {
-          setCategories(data);
-          // Set default selected category to the first one available
-          if (data.length > 0) setSelectedCategoryId(data[0].id);
-        }
-        setFetchingCategories(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setFetchingCategories(false);
-      });
-  }, []);
+    if (categories.length > 0 && !selectedCategoryId && !editId) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId, editId]);
+
+  useEffect(() => {
+    if (editId && transactions.length > 0) {
+      const txToEdit = transactions.find(t => t.id === editId);
+      if (txToEdit) {
+        setTransactionType(Number(txToEdit.amount) < 0 ? 'income' : 'expense');
+        setAmount(Math.abs(Number(txToEdit.amount)).toString());
+        setSelectedCategoryId(txToEdit.category_id);
+        setNote(txToEdit.note || '');
+        setDate(new Date(txToEdit.date).toISOString().split('T')[0]);
+      }
+    }
+  }, [editId, transactions]);
 
   const handleSave = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0 || !selectedCategoryId) {
@@ -48,23 +49,24 @@ export default function TambahTransaksi() {
 
     setLoading(true);
     try {
-      // By our backend convention: Positive numbers are Expenses, Negative numbers are Incomes
       const finalAmount = transactionType === 'income' ? -Math.abs(Number(amount)) : Math.abs(Number(amount));
 
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (editId) {
+        await updateTransaction(editId, {
           amount: finalAmount,
           category_id: selectedCategoryId,
           note,
           date: new Date(date).toISOString(),
-        })
-      });
+        });
+      } else {
+        await addTransaction({
+          amount: finalAmount,
+          category_id: selectedCategoryId,
+          note,
+          date: new Date(date).toISOString(),
+        });
+      }
 
-      if (!res.ok) throw new Error("Gagal merespon peladen");
-
-      // Navigate to History view after success
       router.push('/riwayat');
     } catch (err) {
       console.error(err);
@@ -118,7 +120,7 @@ export default function TambahTransaksi() {
         {/* Dynamic Category Bento Grid */}
         <section className="mb-8">
           <h2 className="font-headline text-sm font-semibold text-on-surface-variant mb-4 ml-1">Pilih Kategori</h2>
-          {fetchingCategories ? (
+          {categories.length === 0 ? (
             <p className="text-center text-on-surface-variant text-sm my-6">Memuat kategori...</p>
           ) : (
             <div className="grid grid-cols-3 gap-3">
