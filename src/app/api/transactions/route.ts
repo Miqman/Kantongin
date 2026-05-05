@@ -1,29 +1,32 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (error || !finalUserId) {
+    if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: { user_id: finalUserId },
-      include: {
-        category: true,
-      },
-      orderBy: { date: 'desc' },
-    });
+    const { data: transactions, error: dbError } = await supabase
+      .from('transactions')
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
 
-    return NextResponse.json(transactions);
+    if (dbError) {
+      console.error('GET Transactions Error:', dbError);
+      return NextResponse.json({ error: 'Gagal mengambil transaksi' }, { status: 500 });
+    }
+
+    return NextResponse.json(transactions ?? []);
   } catch (error) {
+    console.error('GET Transactions Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -33,31 +36,36 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (authError || !finalUserId) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const json = await request.json();
     const { amount, category_id, note, date } = json;
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        user_id: finalUserId,
+    const { data: transaction, error: dbError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: user.id,
         amount,
         category_id,
-        note,
-        date: new Date(date),
-      },
-      include: {
-        category: true,
-      }
-    });
+        note: note ?? '',
+        date,
+      })
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .single();
+
+    if (dbError) {
+      console.error('POST Transaction Error:', dbError);
+      return NextResponse.json({ error: 'Gagal menambah transaksi' }, { status: 500 });
+    }
 
     return NextResponse.json(transaction, { status: 201 });
   } catch (error) {
+    console.error('POST Transaction Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

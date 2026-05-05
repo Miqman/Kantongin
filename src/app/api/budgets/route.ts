@@ -1,28 +1,31 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (error || !finalUserId) {
+    if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const budgets = await prisma.budget.findMany({
-      where: { user_id: finalUserId },
-      include: {
-        category: true,
-      },
-    });
+    const { data: budgets, error: dbError } = await supabase
+      .from('budgets')
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .eq('user_id', user.id);
 
-    return NextResponse.json(budgets);
+    if (dbError) {
+      console.error('GET Budgets Error:', dbError);
+      return NextResponse.json({ error: 'Gagal mengambil budget' }, { status: 500 });
+    }
+
+    return NextResponse.json(budgets ?? []);
   } catch (error) {
+    console.error('GET Budgets Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -32,30 +35,35 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (authError || !finalUserId) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const json = await request.json();
     const { category_id, limit_amount, period } = json;
 
-    const budget = await prisma.budget.create({
-      data: {
-        user_id: finalUserId,
+    const { data: budget, error: dbError } = await supabase
+      .from('budgets')
+      .insert({
+        user_id: user.id,
         category_id,
         limit_amount,
-        period: period || 'monthly',
-      },
-      include: {
-        category: true,
-      }
-    });
+        period: period ?? 'monthly',
+      })
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .single();
+
+    if (dbError) {
+      console.error('POST Budget Error:', dbError);
+      return NextResponse.json({ error: 'Gagal menambah budget' }, { status: 500 });
+    }
 
     return NextResponse.json(budget, { status: 201 });
   } catch (error) {
+    console.error('POST Budget Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

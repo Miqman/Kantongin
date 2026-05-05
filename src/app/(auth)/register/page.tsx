@@ -1,27 +1,70 @@
 'use client'
 
-import { useState } from 'react'
-import { register } from '@/app/actions/auth'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { useStore } from '@/store/useStore'
 import Link from 'next/link'
 import TopAppBar from '@/components/TopAppBar'
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const { user, setUser } = useStore()
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Already logged in → go home
+  useEffect(() => {
+    if (user) router.replace('/')
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    
+    setMessage(null)
+
     const formData = new FormData(e.currentTarget)
-    const result = await register(formData)
-    
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      // ── Hit API Register ──
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Gagal daftar');
+        setLoading(false);
+        return;
+      }
+
+      // ── Sync Browser Client with Server Cookies ──
+      const supabase = createClient();
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      if (supabaseUser) {
+        setUser(supabaseUser);
+        setMessage('Berhasil mendaftar! Mengalihkan...');
+        setTimeout(() => router.push('/'), 1500);
+      } else {
+        setMessage('Akun berhasil dibuat! Silakan cek email untuk verifikasi (jika diaktifkan), lalu silakan masuk.');
+        setLoading(false);
+        setTimeout(() => router.push('/login'), 3000);
+      }
+    } catch (err) {
+      setError('Terjadi kesalahan koneksi');
+      setLoading(false);
     }
   }
+
+  if (user) return null
 
   return (
     <>
@@ -38,6 +81,11 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
+          {message && (
+            <div className="p-4 rounded-xl bg-secondary/10 text-secondary text-sm font-medium">
+              {message}
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1">Email</label>
@@ -47,6 +95,7 @@ export default function RegisterPage() {
                 name="email"
                 type="email"
                 required
+                autoFocus
                 className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface"
                 placeholder="email@anda.com"
               />
@@ -63,7 +112,7 @@ export default function RegisterPage() {
                 required
                 minLength={6}
                 className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface"
-                placeholder="••••••••"
+                placeholder="Min. 6 karakter"
               />
             </div>
           </div>
@@ -73,7 +122,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full py-4 mt-4 rounded-full bg-primary text-on-primary font-headline font-bold text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait"
           >
-            {loading ? 'Memproses...' : 'Daftar & Migrasi Data'}
+            {loading ? 'Memproses...' : 'Buat Akun & Sinkronkan Data'}
           </button>
         </form>
 

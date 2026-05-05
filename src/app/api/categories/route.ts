@@ -1,26 +1,30 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (error || !finalUserId) {
+    if (error || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categories = await prisma.category.findMany({
-      where: { user_id: finalUserId },
-      orderBy: { name: 'asc' },
-    });
+    // Fetch user's custom categories + system default categories (user_id IS NULL)
+    const { data: categories, error: dbError } = await supabase
+      .from('categories')
+      .select('*')
+      .or(`user_id.eq.${user.id},user_id.is.null`)
+      .order('name', { ascending: true });
 
-    return NextResponse.json(categories);
+    if (dbError) {
+      console.error('GET Categories Error:', dbError);
+      return NextResponse.json({ error: 'Gagal mengambil kategori' }, { status: 500 });
+    }
+
+    return NextResponse.json(categories ?? []);
   } catch (error) {
+    console.error('GET Categories Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -30,28 +34,33 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    let finalUserId = user?.id;
-    if (!finalUserId && process.env.NODE_ENV === 'development') {
-      finalUserId = 'dummy-user-id-1';
-    } else if (authError || !finalUserId) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const json = await request.json();
     const { name, icon, color, is_default } = json;
 
-    const category = await prisma.category.create({
-      data: {
-        user_id: finalUserId,
+    const { data: category, error: dbError } = await supabase
+      .from('categories')
+      .insert({
+        user_id: user.id,
         name,
         icon,
         color,
-        is_default: is_default || false,
-      },
-    });
+        is_default: is_default ?? false,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error('POST Category Error:', dbError);
+      return NextResponse.json({ error: 'Gagal menambah kategori' }, { status: 500 });
+    }
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
+    console.error('POST Category Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

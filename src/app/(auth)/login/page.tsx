@@ -1,27 +1,66 @@
 'use client'
 
-import { useState } from 'react'
-import { login } from '@/app/actions/auth'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { useStore } from '@/store/useStore'
 import Link from 'next/link'
 import TopAppBar from '@/components/TopAppBar'
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { user, setUser } = useStore()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Already logged in → go home
+  useEffect(() => {
+    if (user) router.replace('/')
+  }, [user, router])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    
+
     const formData = new FormData(e.currentTarget)
-    const result = await login(formData)
-    
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+
+    try {
+      // ── Hit API Login instead of direct Supabase ──
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Gagal masuk');
+        setLoading(false);
+        return;
+      }
+
+      // ── Sync Browser Client with Server Cookies ──
+      // This is necessary so the singleton client knows we are logged in
+      const supabase = createClient();
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      
+      // Update store immediately for instant UI feedback
+      if (supabaseUser) {
+        setUser(supabaseUser);
+      }
+
+      router.push('/')
+    } catch (err) {
+      setError('Terjadi kesalahan koneksi');
+      setLoading(false);
     }
   }
+
+  if (user) return null
 
   return (
     <>
@@ -47,6 +86,7 @@ export default function LoginPage() {
                 name="email"
                 type="email"
                 required
+                autoFocus
                 className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface"
                 placeholder="email@anda.com"
               />

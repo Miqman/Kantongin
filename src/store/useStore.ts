@@ -20,6 +20,7 @@ interface AppState {
   
   addCategory: (data: any) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  setUser: (user: any | null) => void;
 }
 
 const DEFAULT_CATEGORIES = [
@@ -40,6 +41,8 @@ export const useStore = create<AppState>((set, get) => ({
   user: null,
 
   checkAuth: async () => {
+    // Simple auth check — AppInitializer's onAuthStateChange handles
+    // the full init sequence (fetchCategories, fetchData, migration)
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     set({ user });
@@ -220,5 +223,7 @@ export const useStore = create<AppState>((set, get) => ({
       console.error('Delete Category Error:', error);
       throw error;
     }
-  }
+  },
+
+  setUser: (user) => set({ user })
 }));

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
@@ -7,7 +6,7 @@ export async function POST(request: Request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user?.id) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -17,26 +16,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, count: 0 });
     }
 
-    // Since we need to insert transactions, we map them
-    // Make sure category_id is valid, or just assume it is.
     const dataToInsert = transactions.map((t: any) => ({
       user_id: user.id,
       amount: t.amount,
       category_id: t.category_id,
-      note: t.note || '',
-      date: new Date(t.date),
-      created_at: t.created_at ? new Date(t.created_at) : new Date()
+      note: t.note ?? '',
+      date: t.date,
+      created_at: t.created_at ?? new Date().toISOString(),
     }));
 
-    // In Prisma, we use createMany
-    const result = await prisma.transaction.createMany({
-      data: dataToInsert,
-      skipDuplicates: true
-    });
+    const { data, error: dbError } = await supabase
+      .from('transactions')
+      .insert(dataToInsert)
+      .select('id');
 
-    return NextResponse.json({ success: true, count: result.count }, { status: 201 });
+    if (dbError) {
+      console.error('Batch insert error:', dbError);
+      return NextResponse.json(
+        { error: 'Gagal migrasi data', message: dbError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, count: data?.length ?? 0 }, { status: 201 });
   } catch (error: any) {
     console.error('Batch insert error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', message: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error', message: error.message },
+      { status: 500 }
+    );
   }
 }

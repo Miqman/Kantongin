@@ -6,11 +6,13 @@ import AppInitializer from '@/components/AppInitializer';
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 export const viewport: Viewport = {

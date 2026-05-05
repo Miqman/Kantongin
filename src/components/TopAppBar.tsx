@@ -1,21 +1,69 @@
+"use client";
 import React from 'react';
+import Link from 'next/link';
+import { useStore } from '@/store/useStore';
+
+function getInitials(email: string): string {
+  // Take first letter of email local part
+  return email.charAt(0).toUpperCase();
+}
 
 export default function TopAppBar() {
+  const { user } = useStore();
+
   return (
     <nav className="sticky top-0 z-50 docked full-width bg-gradient-to-b from-surface to-surface-container-low flex justify-between items-center w-full px-6 py-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-primary/20">
-          <img
-            alt="User profile photo"
-            className="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtuERyUWvWycJKKdTwRUeWNMNkIy_-Cptz-5hhOMAV7ed9Tirm2Cm-uwz8HI3p4Lcg5ZCuN9dnqTlmPsgi-0-yhkRjnkpExQ_QyekyIQ-Nw6Qcaw66X-lCQ73oh7y8qzVU8tOL8V6qIiJ-LWPLdtqXtAGcbwvccRM2zCAY2WQfbciJoRxZwjYAgMjYv0gRL23HIU8G0xZGwwXrJajOogrUuzEbyVPr7KE6ftjq_d2Xw_aN8gPg5jqBEXtV7d_FiQTCsL4z0lRsBFE"
-          />
+        {/* Avatar — links to profil if logged in, login if guest */}
+        <Link
+          href={user ? '/profil' : '/login'}
+          className="relative flex-shrink-0"
+          aria-label={user ? 'Lihat profil' : 'Masuk ke akun'}
+        >
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-primary/20 flex items-center justify-center transition-transform active:scale-95">
+            {user ? (
+              /* Logged in: show initials avatar */
+              <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                <span className="text-on-primary font-bold text-base select-none">
+                  {getInitials(user.email ?? 'U')}
+                </span>
+              </div>
+            ) : (
+              /* Guest: show person icon */
+              <span className="material-symbols-outlined text-on-surface-variant text-xl">
+                person
+              </span>
+            )}
+          </div>
+          {/* Online indicator dot — only when logged in */}
+          {user && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-secondary border-2 border-surface" />
+          )}
+        </Link>
+
+        <div>
+          <h1 className="font-headline text-xl font-bold tracking-tighter text-on-surface leading-tight">
+            Kantongin
+          </h1>
+          {user ? (
+            <p className="text-[10px] text-on-surface-variant/70 font-medium leading-none truncate max-w-[160px]">
+              {user.email}
+            </p>
+          ) : (
+            <Link
+              href="/login"
+              className="text-[10px] text-primary font-semibold leading-none hover:underline"
+            >
+              Masuk / Daftar →
+            </Link>
+          )}
         </div>
-        <h1 className="font-headline text-xl font-bold tracking-tighter text-on-surface">
-          Sovereign Ledger
-        </h1>
       </div>
-      <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high transition-colors text-on-surface-variant active:opacity-80 duration-200">
+
+      <button
+        className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high transition-colors text-on-surface-variant active:opacity-80 duration-200"
+        aria-label="Notifikasi"
+      >
         <span className="material-symbols-outlined">notifications</span>
       </button>
     </nav>
