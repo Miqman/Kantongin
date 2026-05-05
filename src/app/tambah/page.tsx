@@ -1,11 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import { useStore } from '@/store/useStore';
 
-export default function TambahTransaksi() {
+function TambahTransaksiContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
@@ -202,3 +202,12 @@ export default function TambahTransaksi() {
     </>
   );
 }
+
+export default function TambahTransaksi() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-on-surface-variant">Memuat...</div>}>
+      <TambahTransaksiContent />
+    </Suspense>
+  );
+}
+
