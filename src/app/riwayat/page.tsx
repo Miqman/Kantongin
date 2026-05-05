@@ -193,8 +193,9 @@ export default function Riwayat() {
                         icon={trx.category?.icon || 'payments'}
                         category={trx.category?.name || 'Tanpa Kategori'}
                         vendor={trx.note || 'Transaksi Kriptik'}
-                        amount={isIncome ? `+ Rp${absoluteAmountStr}` : `- Rp${absoluteAmountStr}`}
+                        amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
                         date={new Date(trx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
+                        isIncome={isIncome}
                         iconColorClass={isIncome ? "text-secondary" : "text-primary"}
                         onDelete={() => handleDelete(trx.id)}
                         onEdit={() => handleEdit(trx.id)}

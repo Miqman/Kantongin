@@ -9,26 +9,45 @@ export default function HeroSection() {
   const [totalHariIni, setTotalHariIni] = useState(0);
   const [totalBulanIni, setTotalBulanIni] = useState(0);
   const [sisaBudget, setSisaBudget] = useState(0);
+  const [growth, setGrowth] = useState(0);
 
   useEffect(() => {
     if (!loading) {
-      // Base logic: Positive = Expense, Negative = Income
+      // 1. Current Balance (Cumulative net worth)
       const totalNetExps = txData.reduce((sum, t) => sum + Number(t.amount), 0);
-      
-      // Total Dana represents true cumulative net worth. 
-      // Starting from 0, incomes (negative amount) increase it, expenses (positive amount) decrease it.
-      setTotalDana( -totalNetExps ); 
+      const currentBalance = -totalNetExps;
+      setTotalDana(currentBalance);
 
-      // Total Hari Ini (Only sum Expenses, i.e., amount > 0)
+      // 2. Initial Balance of the Month (Balance before 1st of this month)
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      const prevBalanceExps = txData
+        .filter(t => new Date(t.date) < firstDayOfMonth)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      const prevBalance = -prevBalanceExps;
+
+      // 3. Growth Calculation
+      if (prevBalance !== 0) {
+        const pct = ((currentBalance - prevBalance) / Math.abs(prevBalance)) * 100;
+        setGrowth(pct);
+      } else if (currentBalance !== 0 && prevBalance === 0) {
+        // If it's a brand new account, growth is 100% from 0
+        setGrowth(100);
+      } else {
+        setGrowth(0);
+      }
+
+      // 4. Total Hari Ini (Expenses only, amount > 0)
       const todayStr = new Date().toLocaleDateString('en-CA');
       const todayExps = txData
         .filter(t => new Date(t.date).toLocaleDateString('en-CA') === todayStr && Number(t.amount) > 0)
         .reduce((sum, t) => sum + Number(t.amount), 0);
       setTotalHariIni(todayExps);
 
-      // Total Bulan Ini (Only sum Expenses, i.e., amount > 0)
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
+      // 5. Total Bulan Ini (Expenses only, amount > 0)
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
       const monthExps = txData
         .filter(t => {
             const d = new Date(t.date);
@@ -37,10 +56,9 @@ export default function HeroSection() {
         .reduce((sum, t) => sum + Number(t.amount), 0);
       setTotalBulanIni(monthExps);
 
-      // Sisa Budget Murni 
-      let monthBudget = 0; // Starts strictly at real database value 0
+      // 6. Sisa Budget
+      let monthBudget = 0;
       if (Array.isArray(bdgData) && bdgData.length > 0) {
-          // Schema matches limit_amount not limit
           monthBudget = bdgData.reduce((sum, b) => sum + Number(b.limit_amount || 0), 0);
       }
       setSisaBudget(monthBudget - monthExps);
@@ -64,10 +82,12 @@ export default function HeroSection() {
           {loading ? (
              <div className="h-10 w-48 bg-surface-container-high animate-pulse rounded-lg mt-1"></div>
           ) : (
-             <>
-               <span className="text-display-md font-headline text-4xl font-extrabold tracking-tight text-on-surface">Rp {formatCurrency(totalDana)}</span>
-               <span className="text-secondary text-sm font-bold opacity-0 md:opacity-100">+2.4%</span>
-             </>
+              <>
+                <span className="text-display-md font-headline text-4xl font-extrabold tracking-tight text-on-surface">Rp {formatCurrency(totalDana)}</span>
+                <span className={`text-sm font-bold md:opacity-100 transition-opacity ${growth >= 0 ? 'text-secondary' : 'text-error'}`}>
+                  {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
+                </span>
+              </>
           )}
         </div>
       </section>

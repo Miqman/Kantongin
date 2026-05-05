@@ -27,7 +27,7 @@ export default function TransactionItem({
   onEdit
 }: TransactionItemProps) {
   const amountColorClass = isIncome ? "text-secondary" : "text-tertiary-fixed-dim";
-  
+
   const controls = useAnimation();
   const swipeThreshold = 75;
 
@@ -64,8 +64,8 @@ export default function TransactionItem({
           <span className="text-xs uppercase tracking-widest hidden sm:inline">Edit</span>
         </div>
         <div className="flex items-center text-error font-bold gap-2">
-           <span className="text-xs uppercase tracking-widest hidden sm:inline">Hapus</span>
-           <span className="material-symbols-outlined text-[20px]">delete</span>
+          <span className="text-xs uppercase tracking-widest hidden sm:inline">Hapus</span>
+          <span className="material-symbols-outlined text-[20px]">delete</span>
         </div>
       </div>
 

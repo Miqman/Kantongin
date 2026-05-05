@@ -21,7 +21,7 @@ export default function RecentTransactions() {
         ) : transactions.length > 0 ? (
           transactions.slice(0, 5).map((trx: any) => {
             const isIncome = Number(trx.amount) < 0;
-            const absoluteAmountStr = `${Math.abs(Number(trx.amount)).toLocaleString('id-ID')}K`;
+            const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
             
             return (
               <TransactionItem
@@ -29,8 +29,9 @@ export default function RecentTransactions() {
                 icon={trx.category?.icon || 'payments'}
                 category={trx.category?.name || 'Tanpa Kategori'}
                 vendor={trx.note || 'Transaksi Biasa'}
-                amount={isIncome ? `+Rp ${absoluteAmountStr}` : `-Rp ${absoluteAmountStr}`}
+                amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
                 date={new Date(trx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                isIncome={isIncome}
                 iconColorClass={isIncome ? "text-secondary" : "text-primary"}
               />
             );
