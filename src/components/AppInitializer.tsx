@@ -14,7 +14,7 @@ export default function AppInitializer() {
 
     // ── onAuthStateChange: single source of truth ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: string, session: any) => {
         const user = session?.user ?? null;
         console.log(`[Auth Event] ${event}`, user?.email);
 

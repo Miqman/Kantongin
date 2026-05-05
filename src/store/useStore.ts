@@ -20,6 +20,7 @@ interface AppState {
   
   addCategory: (data: any) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  updateCategory: (id: string, data: any) => Promise<void>;
   setUser: (user: any | null) => void;
 }
 
@@ -221,6 +222,26 @@ export const useStore = create<AppState>((set, get) => ({
       await fetchCategories();
     } catch (error) {
       console.error('Delete Category Error:', error);
+      throw error;
+    }
+  },
+
+  updateCategory: async (id: string, data: any) => {
+    const { user, fetchCategories } = get();
+    try {
+      if (user) {
+        const res = await fetch(`/api/categories/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Gagal update kategori');
+      } else {
+        await db.categories.update(id, data);
+      }
+      await fetchCategories();
+    } catch (error) {
+      console.error('Update Category Error:', error);
       throw error;
     }
   },

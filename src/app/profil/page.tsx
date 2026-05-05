@@ -210,7 +210,7 @@ export default function Profil() {
               </div>
             </div>
 
-            <div className="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group">
+            <Link href="/profil/categories" className="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group border-b border-outline-variant/5">
               <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
                   category
@@ -220,7 +220,7 @@ export default function Profil() {
               <span className="material-symbols-outlined text-on-surface-variant text-sm">
                 chevron_right
               </span>
-            </div>
+            </Link>
           </div>
         </section>
 
