@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
+import { toast } from 'react-hot-toast';
 
 const ICON_PRESETS = [
   'restaurant', 'shopping_cart', 'directions_car', 'payments', 'movie', 
@@ -57,13 +58,15 @@ export default function ManageCategories() {
     try {
       if (editingCategory) {
         await updateCategory(editingCategory.id, { name, icon, color });
+        toast.success('Kategori berhasil diperbarui');
       } else {
         await addCategory({ name, icon, color });
+        toast.success('Kategori berhasil ditambahkan');
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error('Save error:', err);
-      alert('Gagal menyimpan kategori');
+      toast.error('Gagal menyimpan kategori');
     } finally {
       setIsSubmitting(false);
     }
@@ -74,9 +77,10 @@ export default function ManageCategories() {
     
     try {
       await deleteCategory(id);
+      toast.success('Kategori berhasil dihapus');
     } catch (err) {
       console.error('Delete error:', err);
-      alert('Gagal menghapus kategori');
+      toast.error('Gagal menghapus kategori');
     }
   };
 

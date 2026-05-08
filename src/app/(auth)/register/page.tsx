@@ -48,7 +48,7 @@ export default function RegisterPage() {
       // ── Sync Browser Client with Server Cookies ──
       const supabase = createClient();
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      
+
       if (supabaseUser) {
         setUser(supabaseUser);
         setMessage('Berhasil mendaftar! Mengalihkan...');
@@ -120,7 +120,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 mt-4 rounded-full bg-primary text-on-primary font-headline font-bold text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait"
+            className="w-full py-4 mt-4 rounded-full bg-primary text-on-primary font-headline font-bold text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait cursor-pointer"
           >
             {loading ? 'Memproses...' : 'Buat Akun & Sinkronkan Data'}
           </button>

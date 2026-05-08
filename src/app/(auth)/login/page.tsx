@@ -47,7 +47,7 @@ export default function LoginPage() {
       // This is necessary so the singleton client knows we are logged in
       const supabase = createClient();
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-      
+
       // Update store immediately for instant UI feedback
       if (supabaseUser) {
         setUser(supabaseUser);
@@ -78,30 +78,30 @@ export default function LoginPage() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1">Email</label>
-            <div className="bg-surface-container-low p-4 rounded-xl flex items-center gap-3 border border-outline-variant/5 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-              <span className="material-symbols-outlined text-on-surface-variant text-xl">mail</span>
+          <div className="space-y-2 group">
+            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1 group-focus-within:text-primary transition-colors">Email</label>
+            <div className="bg-surface-container-low hover:bg-surface-container transition-all p-4 rounded-2xl flex items-center gap-4 border border-outline-variant/5 focus-within:bg-surface-bright focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/20">
+              <span className="material-symbols-outlined text-on-surface-variant text-xl group-focus-within:text-primary transition-colors">mail</span>
               <input
                 name="email"
                 type="email"
                 required
                 autoFocus
-                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface"
+                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface placeholder:text-on-surface-variant/30 font-medium"
                 placeholder="email@anda.com"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1">Kata Sandi</label>
-            <div className="bg-surface-container-low p-4 rounded-xl flex items-center gap-3 border border-outline-variant/5 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-              <span className="material-symbols-outlined text-on-surface-variant text-xl">lock</span>
+          <div className="space-y-2 group">
+            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1 group-focus-within:text-primary transition-colors">Kata Sandi</label>
+            <div className="bg-surface-container-low hover:bg-surface-container transition-all p-4 rounded-2xl flex items-center gap-4 border border-outline-variant/5 focus-within:bg-surface-bright focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/20">
+              <span className="material-symbols-outlined text-on-surface-variant text-xl group-focus-within:text-primary transition-colors">lock</span>
               <input
                 name="password"
                 type="password"
                 required
-                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface"
+                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface placeholder:text-on-surface-variant/30 font-medium"
                 placeholder="••••••••"
               />
             </div>
@@ -110,7 +110,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 mt-4 rounded-full bg-primary text-on-primary font-headline font-bold text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait"
+            className="w-full py-4 mt-4 rounded-full bg-primary text-on-primary font-headline font-bold text-base shadow-md active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait cursor-pointer"
           >
             {loading ? 'Memproses...' : 'Masuk'}
           </button>

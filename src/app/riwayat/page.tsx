@@ -6,6 +6,7 @@ import TransactionItem from '@/components/TransactionItem';
 
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
+import { toast } from 'react-hot-toast';
 
 export default function Riwayat() {
   const { transactions, isLoading, deleteTransaction } = useStore();
@@ -17,8 +18,9 @@ export default function Riwayat() {
   const handleDelete = async (id: string) => {
     try {
       await deleteTransaction(id);
+      toast.success('Transaksi berhasil dihapus');
     } catch (error) {
-      alert('Terjadi kesalahan koneksi saat menghapus.');
+      toast.error('Terjadi kesalahan koneksi saat menghapus.');
     }
   };
 

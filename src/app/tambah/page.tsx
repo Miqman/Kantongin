@@ -1,9 +1,17 @@
 "use client";
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { format, parseISO } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import { useStore } from '@/store/useStore';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { toast } from 'react-hot-toast';
 
 function TambahTransaksiContent() {
   const router = useRouter();
@@ -11,7 +19,7 @@ function TambahTransaksiContent() {
   const editId = searchParams.get('edit');
 
   const { categories, addTransaction, updateTransaction, transactions } = useStore();
-  
+
   // Functional States
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
@@ -21,6 +29,7 @@ function TambahTransaksiContent() {
 
   // UI States
   const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (categories.length > 0 && !selectedCategoryId && !editId) {
@@ -43,7 +52,7 @@ function TambahTransaksiContent() {
 
   const handleSave = async () => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0 || !selectedCategoryId) {
-      alert("Masukkan nominal dan kategori yang valid.");
+      toast.error("Masukkan nominal dan kategori yang valid.");
       return;
     }
 
@@ -58,6 +67,7 @@ function TambahTransaksiContent() {
           note,
           date: new Date(date).toISOString(),
         });
+        toast.success("Transaksi berhasil diperbarui");
       } else {
         await addTransaction({
           amount: finalAmount,
@@ -65,12 +75,13 @@ function TambahTransaksiContent() {
           note,
           date: new Date(date).toISOString(),
         });
+        toast.success("Transaksi berhasil disimpan");
       }
 
       router.push('/riwayat');
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan sistem saat menyimpan transaksi.");
+      toast.error("Terjadi kesalahan sistem saat menyimpan transaksi.");
       setLoading(false);
     }
   };
@@ -148,16 +159,37 @@ function TambahTransaksiContent() {
 
         {/* Transaction Details */}
         <section className="space-y-4">
-          {/* Native HTML Date Selector - styled consistently */}
-          <div className="bg-surface-container-low p-4 rounded-full flex items-center gap-3 border border-outline-variant/5 focus-within:ring-1 focus-within:ring-primary/20">
-            <span className="material-symbols-outlined text-primary text-xl">calendar_today</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="bg-transparent border-none text-sm font-body font-medium flex-1 outline-none appearance-none text-on-surface"
-            />
-          </div>
+          {/* Premium Date Selector */}
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "w-full h-auto p-4 rounded-full flex items-center justify-start gap-3 border border-outline-variant/5 bg-surface-container-low hover:bg-surface-container-high transition-all text-sm font-body font-medium cursor-pointer",
+                !date && "text-on-surface-variant"
+              )}
+            >
+              <CalendarIcon className="text-primary size-5" />
+              {date ? (
+                format(parseISO(date), "EEEE, d MMMM yyyy", { locale: id })
+              ) : (
+                <span>Pilih tanggal</span>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+              <Calendar
+                mode="single"
+                selected={date ? parseISO(date) : undefined}
+                onSelect={(selectedDate) => {
+                  if (selectedDate) {
+                    setDate(format(selectedDate, "yyyy-MM-dd"));
+                    setOpen(false);
+                  }
+                }}
+                initialFocus
+                locale={id}
+              />
+            </PopoverContent>
+          </Popover>
 
           {/* Note Field with Auto-Suggest functionality simulated */}
           <div className="space-y-3">

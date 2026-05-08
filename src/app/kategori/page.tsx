@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import { useStore } from '@/store/useStore';
+import { toast } from 'react-hot-toast';
 
 export default function KategoriPage() {
   const { categories, addCategory, deleteCategory } = useStore();
@@ -25,8 +26,9 @@ export default function KategoriPage() {
       });
       setIsAdding(false);
       setNewCatName('');
+      toast.success('Kategori berhasil ditambahkan');
     } catch (error) {
-      alert('Gagal menambah kategori');
+      toast.error('Gagal menambah kategori');
     } finally {
       setLoading(false);
     }
@@ -34,14 +36,15 @@ export default function KategoriPage() {
 
   const handleDelete = async (id: string, isDefault: boolean) => {
     if (isDefault) {
-      alert('Kategori bawaan tidak dapat dihapus');
+      toast.error('Kategori bawaan tidak dapat dihapus');
       return;
     }
     if (confirm('Apakah Anda yakin ingin menghapus kategori ini?')) {
       try {
         await deleteCategory(id);
+        toast.success('Kategori berhasil dihapus');
       } catch (error) {
-        alert('Gagal menghapus kategori');
+        toast.error('Gagal menghapus kategori');
       }
     }
   };

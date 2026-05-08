@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import AppInitializer from '@/components/AppInitializer';
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -71,6 +72,19 @@ export default function RootLayout({
         className={`${inter.variable} ${manrope.variable} font-body bg-surface text-on-surface antialiased min-h-screen pb-32`}
       >
         <AppInitializer />
+        <Toaster 
+          position="top-center" 
+          toastOptions={{
+            style: {
+              background: 'var(--app-surface-container-high)',
+              color: 'var(--app-on-surface)',
+              borderRadius: '1rem',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              border: '1px solid var(--app-outline-variant)',
+            },
+          }}
+        />
         {children}
       </body>
     </html>
