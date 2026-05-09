@@ -6,6 +6,16 @@ import { useStore } from '@/store/useStore';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import { toast } from 'react-hot-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ICON_PRESETS = [
   'restaurant', 'shopping_cart', 'directions_car', 'payments', 'movie', 
@@ -25,6 +35,7 @@ export default function ManageCategories() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   
   const [name, setName] = useState('');
   const [icon, setIcon] = useState(ICON_PRESETS[0]);
@@ -73,14 +84,19 @@ export default function ManageCategories() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Hapus kategori ini? Transaksi dengan kategori ini mungkin akan terpengaruh.')) return;
-    
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteCategory(id);
+      await deleteCategory(deleteTarget);
       toast.success('Kategori berhasil dihapus');
     } catch (err) {
       console.error('Delete error:', err);
       toast.error('Gagal menghapus kategori');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -95,7 +111,7 @@ export default function ManageCategories() {
           </div>
           <button 
             onClick={() => handleOpenModal()}
-            className="w-12 h-12 rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20 flex items-center justify-center active:scale-95 transition-transform"
+            className="w-12 h-12 rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20 flex items-center justify-center active:scale-95 transition-transform cursor-pointer"
           >
             <span className="material-symbols-outlined">add</span>
           </button>
@@ -130,13 +146,13 @@ export default function ManageCategories() {
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={() => handleOpenModal(cat)}
-                      className="w-10 h-10 rounded-full hover:bg-primary/10 text-primary transition-colors flex items-center justify-center"
+                      className="w-10 h-10 rounded-full hover:bg-primary/10 text-primary transition-colors flex items-center justify-center cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-xl">edit</span>
                     </button>
                     <button 
                       onClick={() => handleDelete(cat.id)}
-                      className="w-10 h-10 rounded-full hover:bg-error/10 text-error transition-colors flex items-center justify-center"
+                      className="w-10 h-10 rounded-full hover:bg-error/10 text-error transition-colors flex items-center justify-center cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-xl">delete</span>
                     </button>
@@ -182,7 +198,7 @@ export default function ManageCategories() {
                         key={ic}
                         type="button"
                         onClick={() => setIcon(ic)}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                           icon === ic ? 'bg-primary text-on-primary scale-110 shadow-md' : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
                         }`}
                       >
@@ -200,7 +216,7 @@ export default function ManageCategories() {
                         key={cl}
                         type="button"
                         onClick={() => setColor(cl)}
-                        className={`w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-surface ${
+                        className={`w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-surface cursor-pointer ${
                           color === cl ? 'ring-2 ring-primary scale-125' : 'hover:scale-110'
                         }`}
                         style={{ backgroundColor: cl }}
@@ -213,14 +229,14 @@ export default function ManageCategories() {
                   <button 
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 py-4 rounded-2xl bg-surface-container-high font-bold active:scale-95 transition-transform"
+                    className="flex-1 py-4 rounded-2xl bg-surface-container-high font-bold active:scale-95 transition-transform cursor-pointer"
                   >
                     Batal
                   </button>
                   <button 
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-2 py-4 rounded-2xl bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform disabled:opacity-50"
+                    className="flex-2 py-4 rounded-2xl bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform disabled:opacity-50 cursor-pointer"
                   >
                     {isSubmitting ? 'Menyimpan...' : (editingCategory ? 'Simpan Perubahan' : 'Tambah Kategori')}
                   </button>
@@ -231,6 +247,28 @@ export default function ManageCategories() {
         )}
       </main>
       <BottomNavBar />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="rounded-3xl border-none bg-surface-container-high p-6 ring-0 shadow-2xl">
+          <AlertDialogHeader className="text-left place-items-start">
+            <div className="w-12 h-12 rounded-2xl bg-error/10 flex items-center justify-center mb-2">
+              <span className="material-symbols-outlined text-error text-2xl">delete</span>
+            </div>
+            <AlertDialogTitle className="font-headline text-xl font-bold text-on-surface">Hapus Kategori</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant text-sm">
+              Hapus kategori ini? Transaksi dengan kategori ini mungkin akan terpengaruh.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-3 border-none bg-transparent p-0 pt-4 mx-0 mb-0 rounded-none">
+            <AlertDialogCancel className="flex-1 py-3 rounded-full border-outline-variant/20 bg-surface-container-low font-bold text-on-surface hover:bg-surface-container-highest">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="flex-1 py-3 rounded-full bg-error text-on-error font-bold shadow-md shadow-error/20 hover:bg-error/90 border-none cursor-pointer">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

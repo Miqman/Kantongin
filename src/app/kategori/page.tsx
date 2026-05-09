@@ -4,6 +4,16 @@ import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import { useStore } from '@/store/useStore';
 import { toast } from 'react-hot-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function KategoriPage() {
   const { categories, addCategory, deleteCategory } = useStore();
@@ -12,6 +22,7 @@ export default function KategoriPage() {
   const [newCatIcon, setNewCatIcon] = useState('category');
   const [newCatColor, setNewCatColor] = useState('#2196f3');
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +50,18 @@ export default function KategoriPage() {
       toast.error('Kategori bawaan tidak dapat dihapus');
       return;
     }
-    if (confirm('Apakah Anda yakin ingin menghapus kategori ini?')) {
-      try {
-        await deleteCategory(id);
-        toast.success('Kategori berhasil dihapus');
-      } catch (error) {
-        toast.error('Gagal menghapus kategori');
-      }
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteCategory(deleteTarget);
+      toast.success('Kategori berhasil dihapus');
+    } catch (error) {
+      toast.error('Gagal menghapus kategori');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -134,6 +150,28 @@ export default function KategoriPage() {
         </div>
       </main>
       <BottomNavBar />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="rounded-3xl border-none bg-surface-container-high p-6 ring-0 shadow-2xl">
+          <AlertDialogHeader className="text-left place-items-start">
+            <div className="w-12 h-12 rounded-2xl bg-error/10 flex items-center justify-center mb-2">
+              <span className="material-symbols-outlined text-error text-2xl">delete</span>
+            </div>
+            <AlertDialogTitle className="font-headline text-xl font-bold text-on-surface">Hapus Kategori</AlertDialogTitle>
+            <AlertDialogDescription className="text-on-surface-variant text-sm">
+              Apakah Anda yakin ingin menghapus kategori ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-3 border-none bg-transparent p-0 pt-4 mx-0 mb-0 rounded-none">
+            <AlertDialogCancel className="flex-1 py-3 rounded-full border-outline-variant/20 bg-surface-container-low font-bold text-on-surface hover:bg-surface-container-highest">
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="flex-1 py-3 rounded-full bg-error text-on-error font-bold shadow-md shadow-error/20 hover:bg-error/90 border-none cursor-pointer">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

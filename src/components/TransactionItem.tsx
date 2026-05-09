@@ -56,7 +56,7 @@ export default function TransactionItem({
   };
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden bg-surface-container-high group touch-pan-y">
+    <div className="relative w-full rounded-2xl overflow-hidden bg-surface-container-high/50 group touch-pan-y">
       {/* Background Actions */}
       <div className="absolute inset-0 flex justify-between items-center px-5">
         <div className="flex items-center text-primary font-bold gap-2">
@@ -77,20 +77,20 @@ export default function TransactionItem({
         dragDirectionLock
         onDragEnd={handleDragEnd}
         animate={controls}
-        className="relative z-10 flex items-center justify-between p-4 bg-surface-container-low rounded-xl group-hover:bg-surface-container-highest transition-colors cursor-grab active:cursor-grabbing"
+        className="relative z-10 flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
       >
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center ${iconColorClass}`}>
-            <span className="material-symbols-outlined">{icon}</span>
+        <div className="flex items-center gap-3.5">
+          <div className={`w-11 h-11 rounded-xl bg-primary/8 dark:bg-surface-container-highest flex items-center justify-center ${iconColorClass}`}>
+            <span className="material-symbols-outlined text-[22px]">{icon}</span>
           </div>
           <div>
-            <p className="font-bold text-on-surface">{category}</p>
-            <p className="text-xs text-on-surface-variant max-w-[150px] truncate">{vendor}</p>
+            <p className="font-bold text-on-surface text-sm">{category}</p>
+            <p className="text-xs text-on-surface-variant/70 max-w-[150px] truncate">{vendor}</p>
           </div>
         </div>
         <div className="text-right whitespace-nowrap">
-          <p className={`font-bold ${amountColorClass}`}>{amount}</p>
-          <p className="text-[10px] text-outline uppercase font-bold tracking-tighter">{date}</p>
+          <p className={`font-bold text-sm ${amountColorClass}`}>{amount}</p>
+          <p className="text-[10px] text-on-surface-variant/50 font-medium">{date}</p>
         </div>
       </motion.div>
     </div>

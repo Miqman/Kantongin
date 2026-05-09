@@ -230,11 +230,11 @@ export default function Profil() {
             Operasi Data
           </h2>
           <div className="grid grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10">
+            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer">
               <span className="material-symbols-outlined text-on-surface-variant text-lg">csv</span>
               <span className="font-medium text-sm">Export CSV</span>
             </button>
-            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10">
+            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer">
               <span className="material-symbols-outlined text-on-surface-variant text-lg">picture_as_pdf</span>
               <span className="font-medium text-sm">Export PDF</span>
             </button>
@@ -247,7 +247,7 @@ export default function Profil() {
             <button
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full flex items-center justify-center gap-3 py-4 rounded-full bg-error-container/10 border border-error-container/20 text-error hover:bg-error-container/20 transition-colors disabled:opacity-50 disabled:cursor-wait"
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-full bg-error-container/10 border border-error-container/20 text-error hover:bg-error-container/20 transition-colors disabled:opacity-50 disabled:cursor-wait cursor-pointer"
             >
               <span className="material-symbols-outlined">logout</span>
               <span className="font-bold tracking-wide">

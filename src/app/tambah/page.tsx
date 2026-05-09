@@ -92,17 +92,17 @@ function TambahTransaksiContent() {
       <main className="px-6 pt-8 max-w-lg mx-auto pb-32">
 
         {/* switch income and expense */}
-        <div className="flex bg-surface-container-low rounded-full p-1 mb-8 max-w-[240px] mx-auto border border-outline-variant/10 shadow-inner">
+        <div className="flex bg-surface-container-low rounded-full p-1.5 mb-8 max-w-[260px] mx-auto border border-outline-variant/20 shadow-sm">
           <button
             onClick={() => setTransactionType('expense')}
-            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'expense' ? 'bg-surface-bright text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'expense' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:text-on-surface'
               }`}
           >
             Pengeluaran
           </button>
           <button
             onClick={() => setTransactionType('income')}
-            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'income' ? 'bg-secondary text-on-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+            className={`flex-1 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${transactionType === 'income' ? 'bg-secondary text-on-secondary shadow-md' : 'text-on-surface-variant hover:text-on-surface'
               }`}
           >
             Pemasukan
@@ -111,45 +111,45 @@ function TambahTransaksiContent() {
 
         {/* Hero Amount Display */}
         <section className="mb-10 text-center">
-          <label className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-2 block">
+          <label className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/70 mb-3 block font-semibold">
             {transactionType === 'expense' ? 'Jumlah Pengeluaran' : 'Jumlah Pemasukan'}
           </label>
-          <div className="relative inline-flex items-baseline">
+          <div className="relative inline-flex items-baseline bg-surface-container-low/50 px-6 py-4 rounded-3xl">
             <span className={`font-headline text-2xl font-extrabold mr-2 ${transactionType === 'expense' ? 'text-primary' : 'text-secondary'}`}>Rp</span>
             <input
               autoFocus
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className={`bg-transparent border-none focus:ring-0 p-0 font-headline text-6xl font-extrabold w-full max-w-[280px] outline-none ${transactionType === 'expense' ? 'text-on-surface selection:bg-primary/30' : 'text-secondary selection:bg-secondary/30'}`}
+              className={`bg-transparent border-none focus:ring-0 p-0 font-headline text-5xl font-extrabold w-full max-w-[240px] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${transactionType === 'expense' ? 'text-on-surface selection:bg-primary/30' : 'text-secondary selection:bg-secondary/30'}`}
               placeholder="0"
             />
-            <div className={`absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-transparent to-transparent ${transactionType === 'expense' ? 'via-primary/40' : 'via-secondary/40'}`}></div>
+            <div className={`absolute bottom-3 left-6 right-6 h-0.5 rounded-full ${transactionType === 'expense' ? 'bg-primary/30' : 'bg-secondary/30'}`}></div>
           </div>
         </section>
 
         {/* Dynamic Category Bento Grid */}
         <section className="mb-8">
-          <h2 className="font-headline text-sm font-semibold text-on-surface-variant mb-4 ml-1">Pilih Kategori</h2>
+          <h2 className="font-headline text-sm font-semibold text-on-surface mb-4 ml-1">Pilih Kategori</h2>
           {categories.length === 0 ? (
             <p className="text-center text-on-surface-variant text-sm my-6">Memuat kategori...</p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {categories.map((cat) => {
                 const isSelected = selectedCategoryId === cat.id;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-3xl transition-all border group cursor-pointer ${isSelected
-                      ? 'bg-surface-container-highest border-primary/30 shadow-md ring-1 ring-primary/20 scale-105'
-                      : 'bg-surface-container-low hover:bg-surface-container-high border-outline-variant/5'
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl transition-all border group cursor-pointer ${isSelected
+                      ? 'bg-primary/10 border-primary/30 dark:bg-primary/15 dark:border-primary/40 ring-1 ring-primary/20'
+                      : 'bg-surface-container-lowest hover:bg-surface-container-low border-outline-variant/20 dark:bg-surface-container-low dark:border-outline-variant/10 dark:hover:bg-surface-container'
                       }`}
                   >
-                    <div style={{ backgroundColor: `${cat.color}20` }} className="w-12 h-12 rounded-xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                      <span style={{ color: cat.color }} className="material-symbols-outlined">{cat.icon}</span>
+                    <div style={{ backgroundColor: `${cat.color}18` }} className={`w-10 h-10 rounded-xl flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform`}>
+                      <span style={{ color: cat.color }} className="material-symbols-outlined text-xl">{cat.icon}</span>
                     </div>
-                    <span className={`font-label text-[11px] font-medium text-center ${isSelected ? 'text-primary' : 'text-on-surface'}`}>{cat.name}</span>
+                    <span className={`font-label text-[10px] font-semibold text-center leading-tight ${isSelected ? 'text-primary dark:text-primary' : 'text-on-surface-variant'}`}>{cat.name}</span>
                   </button>
                 );
               })}
@@ -164,18 +164,20 @@ function TambahTransaksiContent() {
             <PopoverTrigger
               className={cn(
                 buttonVariants({ variant: "outline" }),
-                "w-full h-auto p-4 rounded-full flex items-center justify-start gap-3 border border-outline-variant/5 bg-surface-container-low hover:bg-surface-container-high transition-all text-sm font-body font-medium cursor-pointer",
+                "w-full h-auto p-4 rounded-2xl flex items-center justify-start gap-3 border border-outline-variant/20 bg-surface-container-lowest hover:bg-surface-container-low shadow-sm transition-all text-sm font-body font-medium cursor-pointer",
                 !date && "text-on-surface-variant"
               )}
             >
-              <CalendarIcon className="text-primary size-5" />
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                <CalendarIcon className="text-primary size-4" />
+              </div>
               {date ? (
-                format(parseISO(date), "EEEE, d MMMM yyyy", { locale: id })
+                <span className="text-on-surface">{format(parseISO(date), "EEEE, d MMMM yyyy", { locale: id })}</span>
               ) : (
                 <span>Pilih tanggal</span>
               )}
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+            <PopoverContent className="w-auto p-0 rounded-2xl shadow-lg" align="start">
               <Calendar
                 mode="single"
                 selected={date ? parseISO(date) : undefined}
@@ -193,12 +195,12 @@ function TambahTransaksiContent() {
 
           {/* Note Field with Auto-Suggest functionality simulated */}
           <div className="space-y-3">
-            <div className="bg-surface-container-low p-4 rounded-full flex items-center gap-3 border border-outline-variant/5 focus-within:bg-surface-bright focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-              <span className="material-symbols-outlined text-on-surface-variant text-xl">notes</span>
+            <div className="bg-surface-container-lowest p-4 rounded-2xl flex items-center gap-3 border border-outline-variant/20 shadow-sm focus-within:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
+              <span className="material-symbols-outlined text-on-surface-variant/60 text-xl">notes</span>
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full placeholder:text-on-surface-variant/40 outline-none"
+                className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full placeholder:text-on-surface-variant/50 outline-none"
                 placeholder="Tambah catatan (opsional)"
                 type="text"
               />
@@ -210,7 +212,7 @@ function TambahTransaksiContent() {
                 <button
                   key={suggestion}
                   onClick={() => setNote(suggestion)}
-                  className="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-[11px] font-medium text-primary-fixed-dim hover:bg-primary/10 transition-colors cursor-pointer"
+                  className="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant/20 text-[11px] font-semibold text-primary hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-pointer shadow-sm"
                 >
                   {suggestion}
                 </button>
@@ -220,11 +222,15 @@ function TambahTransaksiContent() {
         </section>
 
         {/* Action Controls */}
-        <div className="mt-8">
+        <div className="mt-10">
           <button
             disabled={loading}
             onClick={handleSave}
-            className="w-full py-5 rounded-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold text-lg shadow-[0px_24px_48px_rgba(6,14,32,0.4)] active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-wait cursor-pointer"
+            className={`w-full py-5 rounded-full font-headline font-bold text-lg shadow-xl active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-wait cursor-pointer ${
+              transactionType === 'expense' 
+                ? 'bg-primary text-on-primary shadow-primary/25 hover:shadow-primary/40' 
+                : 'bg-secondary text-on-secondary shadow-secondary/25 hover:shadow-secondary/40'
+            }`}
           >
             {loading ? 'Menyimpan...' : 'Simpan Transaksi'}
           </button>

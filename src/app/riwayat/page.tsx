@@ -104,26 +104,26 @@ export default function Riwayat() {
           </div>
           {/* Search Bar */}
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-primary/60 group-focus-within:text-primary transition-colors">
-              <span className="material-symbols-outlined">search</span>
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-on-surface-variant/50 group-focus-within:text-primary transition-colors">
+              <span className="material-symbols-outlined text-xl">search</span>
             </div>
             <input 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-low border-none rounded-full py-4 pl-12 pr-6 text-on-surface placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-primary/20 focus:bg-surface-bright transition-all font-medium outline-none" 
+              className="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-2xl py-3.5 pl-12 pr-6 text-on-surface placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-primary/15 focus:border-primary/30 shadow-sm transition-all font-medium outline-none" 
               placeholder="Cari transaksi..." 
               type="text"
             />
           </div>
           {/* Horizontal Filters */}
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
+          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
             <button 
               onClick={() => setFilterTime(prev => prev === 'THIS_MONTH' ? 'ALL' : 'THIS_MONTH')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
-                filterTime === 'THIS_MONTH' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                filterTime === 'THIS_MONTH' ? 'bg-primary text-on-primary shadow-md shadow-primary/20' : 'bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low shadow-sm'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+              <span className="material-symbols-outlined text-[16px]">calendar_today</span>
               {filterTime === 'THIS_MONTH' ? 'Bulan Ini' : 'Semua Waktu'}
             </button>
             
@@ -140,11 +140,11 @@ export default function Riwayat() {
                 ))}
               </select>
               <button 
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors pointer-events-none ${
-                  filterCategory !== 'ALL' ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest'
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all pointer-events-none ${
+                  filterCategory !== 'ALL' ? 'bg-primary text-on-primary shadow-md shadow-primary/20' : 'bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant shadow-sm'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">category</span>
+                <span className="material-symbols-outlined text-[16px]">category</span>
                 {filterCategory === 'ALL' ? 'Kategori' : uniqueCategories.find(c => c.id === filterCategory)?.name}
               </button>
             </div>
@@ -153,9 +153,9 @@ export default function Riwayat() {
             {(filterTime !== 'THIS_MONTH' || filterCategory !== 'ALL' || searchQuery !== "") && (
               <button 
                 onClick={() => { setFilterTime('THIS_MONTH'); setFilterCategory('ALL'); setSearchQuery(""); }}
-                className="flex items-center gap-2 px-5 py-2.5 bg-error/10 text-error rounded-full text-sm font-semibold whitespace-nowrap hover:bg-error/20 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap hover:bg-error/20 transition-colors cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">close</span>
+                <span className="material-symbols-outlined text-[16px]">close</span>
                 Hapus Filter
               </button>
             )}
@@ -163,7 +163,7 @@ export default function Riwayat() {
         </section>
 
         {/* Transactions List Grouped by Date */}
-        <section className="space-y-10">
+        <section className="space-y-8">
           {isLoading ? (
              <div className="flex justify-center items-center py-20">
                <p className="font-medium text-on-surface-variant/50 animate-pulse">Menyelaraskan buku besar...</p>
@@ -175,15 +175,14 @@ export default function Riwayat() {
              </div>
           ) : (
             groupedData.map((group, index) => (
-              <div key={group.date} className={`space-y-4 ${index > 1 ? 'opacity-80' : ''}`}>
-                <div className="flex justify-between items-end px-2">
+              <div key={group.date} className="space-y-3">
+                <div className="flex justify-between items-center px-1">
                   <h3 className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">
                     {getLabelForDate(group.date)}
                   </h3>
-                  {/* Provide visual hints similar to design */}
-                  {index === 0 && <span className="text-[10px] font-bold text-secondary/80 bg-secondary-container/10 px-2 py-0.5 rounded-full uppercase">Terkini</span>}
+                  {index === 0 && <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full uppercase">Terkini</span>}
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {group.items.map(trx => {
                     const isIncome = Number(trx.amount) < 0;
                     const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');

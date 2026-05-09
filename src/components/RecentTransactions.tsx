@@ -10,12 +10,12 @@ export default function RecentTransactions() {
   return (
     <section className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="font-headline text-lg font-semibold tracking-tight">Recent Transactions</h2>
+        <h2 className="font-headline text-lg font-bold tracking-tight">Transaksi Terakhir</h2>
         <Link href="/riwayat" className='text-primary text-xs font-bold uppercase tracking-widest hover:opacity-80 active:scale-95 transition-all'>
-          See All
+          Lihat Semua
         </Link>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {loading ? (
           <p className="text-sm text-on-surface-variant text-center my-6">Memuat log transaksi...</p>
         ) : transactions.length > 0 ? (
@@ -30,14 +30,17 @@ export default function RecentTransactions() {
                 category={trx.category?.name || 'Tanpa Kategori'}
                 vendor={trx.note || 'Transaksi Biasa'}
                 amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
-                date={new Date(trx.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                date={new Date(trx.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
                 isIncome={isIncome}
                 iconColorClass={isIncome ? "text-secondary" : "text-primary"}
               />
             );
           })
         ) : (
-          <p className="text-sm text-on-surface-variant opacity-70 text-center my-6">Belum ada transaksi.</p>
+          <div className="flex flex-col items-center justify-center py-10 opacity-60">
+            <span className="material-symbols-outlined text-3xl mb-2 text-on-surface-variant/40">receipt_long</span>
+            <p className="text-sm text-on-surface-variant font-medium">Belum ada transaksi.</p>
+          </div>
         )}
       </div>
     </section>
