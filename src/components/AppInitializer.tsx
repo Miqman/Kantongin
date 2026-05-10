@@ -5,10 +5,13 @@ import { useStore } from '@/store/useStore';
 import { migrateGuestToCloud } from '@/lib/sync';
 import db from '@/lib/dexie';
 
+// Module-level flags survive React Strict Mode remounts
+let globalInitialized = false;
+let globalMigrated = false;
+
 export default function AppInitializer() {
   const { setUser, fetchCategories, fetchData } = useStore();
-  const hasMigrated = useRef(false);
-  const hasInitialized = useRef(false);
+  const lastAuthUserId = useRef<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -24,38 +27,46 @@ export default function AppInitializer() {
 
         // 2. Handle migration for logged-in users
         if (user) {
-          if (!hasMigrated.current) {
+          if (!globalMigrated) {
             try {
               const localCount = await db.transactions.count();
               if (localCount > 0) {
                 console.log(`[Migration] Starting for ${user.email}`);
-                hasMigrated.current = true;
+                globalMigrated = true;
                 await migrateGuestToCloud();
                 console.log('[Migration] Success');
               } else {
-                hasMigrated.current = true;
+                globalMigrated = true;
               }
             } catch (err) {
               console.error('[Migration] Failed', err);
-              hasMigrated.current = false;
+              globalMigrated = false;
             }
           }
         } else {
-          hasMigrated.current = false;
+          globalMigrated = false;
         }
 
-        // console.log(event, "<<<< cek event");
-        
-
-        // 3. Only fetch data once on INITIAL_SESSION, or on actual sign-in/out
+        // 3. Fetch data only once per auth state
         if (event === 'INITIAL_SESSION') {
-          if (!hasInitialized.current) {
-            hasInitialized.current = true;
+          if (!globalInitialized) {
+            globalInitialized = true;
+            lastAuthUserId.current = user?.id ?? null;
             await fetchCategories(true);
             await fetchData(true);
           }
-        } else if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-          // Reset lastFetchedAt so data is fresh for new auth state
+        } else if (event === 'SIGNED_IN') {
+          // Only fetch if this is a genuine new sign-in (different user or first time)
+          const newUserId = user?.id ?? null;
+          if (newUserId !== lastAuthUserId.current) {
+            lastAuthUserId.current = newUserId;
+            await fetchCategories(true);
+            await fetchData(true);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          lastAuthUserId.current = null;
+          globalInitialized = false;
+          globalMigrated = false;
           await fetchCategories(true);
           await fetchData(true);
         }
