@@ -23,17 +23,23 @@ export default function GoogleSheetsCard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sheetsParam = params.get('sheets');
+    const reason = params.get('reason');
+    const details = params.get('details');
     
     if (sheetsParam === 'connected') {
       toast.success('Google Sheets berhasil terhubung!');
       checkStatus();
-      // Clean URL
       window.history.replaceState({}, '', '/profil');
     } else if (sheetsParam === 'denied') {
       toast.error('Akses Google Sheets ditolak');
       window.history.replaceState({}, '', '/profil');
     } else if (sheetsParam === 'error') {
-      toast.error('Gagal menghubungkan Google Sheets');
+      const errorMsg = reason && details 
+        ? `${reason}: ${details}`
+        : reason || 'Unknown error';
+      
+      toast.error(`Gagal menghubungkan: ${errorMsg}`, { duration: 8000 });
+      console.error('[Sheets Connect Error]', { reason, details });
       window.history.replaceState({}, '', '/profil');
     }
   }, []);
