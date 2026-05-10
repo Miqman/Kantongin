@@ -1,6 +1,8 @@
 import { google } from 'googleapis';
 
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+// Using drive.file scope (non-sensitive) instead of spreadsheets (sensitive)
+// drive.file grants access only to files created by this app — no Google verification needed
+const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
