@@ -9,7 +9,7 @@ import TopAppBar from '@/components/TopAppBar'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { user, setUser } = useStore()
+  const { user } = useStore()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -43,15 +43,9 @@ export default function LoginPage() {
         return;
       }
 
-      // ── Sync Browser Client with Server Cookies ──
-      // This is necessary so the singleton client knows we are logged in
+      // ── Sign in on client side too so onAuthStateChange fires SIGNED_IN ──
       const supabase = createClient();
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-
-      // Update store immediately for instant UI feedback
-      if (supabaseUser) {
-        setUser(supabaseUser);
-      }
+      await supabase.auth.signInWithPassword({ email, password });
 
       router.push('/')
     } catch (err) {

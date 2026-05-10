@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
+import GoogleSheetsCard from '@/components/GoogleSheetsCard';
 import { useStore } from '@/store/useStore';
 import { createClient } from '@/lib/supabase/client';
 
@@ -151,20 +152,7 @@ export default function Profil() {
         {/* ── INTEGRATIONS (only for logged in users) ── */}
         {user && (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-surface-container-low p-6 rounded-[2rem] flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-secondary/10 rounded-xl">
-                  <span className="material-symbols-outlined text-secondary">sync</span>
-                </div>
-                <span className="text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant bg-outline-variant/20 px-2 py-1 rounded-full">
-                  Phase 2
-                </span>
-              </div>
-              <div>
-                <h3 className="font-headline font-bold text-lg">Google Sheets</h3>
-                <p className="text-on-surface-variant text-sm mt-1">Sinkronisasi otomatis tersedia di v1.1</p>
-              </div>
-            </div>
+            <GoogleSheetsCard />
 
             <div className="bg-surface-container-low p-6 rounded-[2rem] flex flex-col justify-between border border-primary/10">
               <div className="flex justify-between items-start mb-4">

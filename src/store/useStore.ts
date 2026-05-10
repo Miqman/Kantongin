@@ -9,10 +9,11 @@ interface AppState {
   isLoading: boolean;
   error: string | null;
   user: any | null;
+  lastFetchedAt: number | null;
   
   checkAuth: () => Promise<void>;
-  fetchData: () => Promise<void>;
-  fetchCategories: () => Promise<void>;
+  fetchData: (force?: boolean) => Promise<void>;
+  fetchCategories: (force?: boolean) => Promise<void>;
   
   addTransaction: (data: any) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
@@ -40,6 +41,7 @@ export const useStore = create<AppState>((set, get) => ({
   isLoading: true,
   error: null,
   user: null,
+  lastFetchedAt: null,
 
   checkAuth: async () => {
     // Simple auth check — AppInitializer's onAuthStateChange handles
@@ -49,7 +51,13 @@ export const useStore = create<AppState>((set, get) => ({
     set({ user });
   },
 
-  fetchData: async () => {
+  fetchData: async (force = false) => {
+    // Skip if data was fetched recently (within 30 seconds) unless forced
+    const { lastFetchedAt } = get();
+    if (!force && lastFetchedAt && Date.now() - lastFetchedAt < 30000) {
+      return;
+    }
+
     set({ isLoading: true, error: null });
     const { user } = get();
     
@@ -66,7 +74,8 @@ export const useStore = create<AppState>((set, get) => ({
         set({
           transactions: Array.isArray(txData) ? txData : [],
           budgets: Array.isArray(bdgData) ? bdgData : [],
-          isLoading: false
+          isLoading: false,
+          lastFetchedAt: Date.now()
         });
       } else {
         // Guest mode using Dexie
@@ -80,7 +89,7 @@ export const useStore = create<AppState>((set, get) => ({
           category: catMap.get(tx.category_id) || null
         }));
 
-        set({ transactions: txWithCategories, budgets: [], isLoading: false });
+        set({ transactions: txWithCategories, budgets: [], isLoading: false, lastFetchedAt: Date.now() });
       }
     } catch (error) {
       console.error('Fetch Error:', error);
@@ -88,8 +97,13 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
-  fetchCategories: async () => {
-    const { user } = get();
+  fetchCategories: async (force = false) => {
+    const { user, categories } = get();
+    // Skip if categories already loaded unless forced
+    if (!force && categories.length > 0) {
+      return;
+    }
+
     try {
       if (user) {
         const res = await fetch('/api/categories');
@@ -139,7 +153,7 @@ export const useStore = create<AppState>((set, get) => ({
         };
         await db.transactions.add(newTx);
       }
-      await fetchData(); // Refresh data
+      await fetchData(true); // Force refresh after mutation
     } catch (error) {
       console.error('Add Transaction Error:', error);
       throw error;
@@ -155,7 +169,7 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         await db.transactions.delete(id);
       }
-      await fetchData();
+      await fetchData(true);
     } catch (error) {
       console.error('Delete Transaction Error:', error);
       throw error;
@@ -175,7 +189,7 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         await db.transactions.update(id, data);
       }
-      await fetchData();
+      await fetchData(true);
     } catch (error) {
       console.error('Update Transaction Error:', error);
       throw error;
@@ -203,7 +217,7 @@ export const useStore = create<AppState>((set, get) => ({
         };
         await db.categories.add(newCat);
       }
-      await fetchCategories();
+      await fetchCategories(true);
     } catch (error) {
       console.error('Add Category Error:', error);
       throw error;
@@ -219,7 +233,7 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         await db.categories.delete(id);
       }
-      await fetchCategories();
+      await fetchCategories(true);
     } catch (error) {
       console.error('Delete Category Error:', error);
       throw error;
@@ -239,7 +253,7 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         await db.categories.update(id, data);
       }
-      await fetchCategories();
+      await fetchCategories(true);
     } catch (error) {
       console.error('Update Category Error:', error);
       throw error;

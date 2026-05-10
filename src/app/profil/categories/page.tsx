@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import TopAppBar from '@/components/TopAppBar';
@@ -31,7 +31,7 @@ const COLOR_PRESETS = [
 
 export default function ManageCategories() {
   const router = useRouter();
-  const { categories, addCategory, deleteCategory, updateCategory, fetchCategories } = useStore();
+  const { categories, addCategory, deleteCategory, updateCategory } = useStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -41,10 +41,6 @@ export default function ManageCategories() {
   const [icon, setIcon] = useState(ICON_PRESETS[0]);
   const [color, setColor] = useState(COLOR_PRESETS[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
 
   const handleOpenModal = (cat: any = null) => {
     if (cat) {

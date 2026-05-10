@@ -1,6 +1,5 @@
 "use client";
-import React, { useEffect } from 'react';
-import { useStore } from '@/store/useStore';
+import React from 'react';
 import TopAppBar from '@/components/TopAppBar';
 import HeroSection from '@/components/HeroSection';
 import SpendingChart from '@/components/SpendingChart';
@@ -8,12 +7,6 @@ import RecentTransactions from '@/components/RecentTransactions';
 import BottomNavBar from '@/components/BottomNavBar';
 
 export default function Home() {
-  const fetchData = useStore(state => state.fetchData);
-
-  useEffect(() => {
-    fetchData(); // Fetch exactly once when Dashboard mounts
-  }, [fetchData]);
-
   return (
     <>
       <TopAppBar />

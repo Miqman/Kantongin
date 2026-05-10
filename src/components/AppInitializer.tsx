@@ -8,6 +8,7 @@ import db from '@/lib/dexie';
 export default function AppInitializer() {
   const { setUser, fetchCategories, fetchData } = useStore();
   const hasMigrated = useRef(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -21,31 +22,44 @@ export default function AppInitializer() {
         // 1. Update store state first
         setUser(user);
 
-        // 2. Handle data fetching and migration
+        // 2. Handle migration for logged-in users
         if (user) {
           if (!hasMigrated.current) {
             try {
               const localCount = await db.transactions.count();
               if (localCount > 0) {
                 console.log(`[Migration] Starting for ${user.email}`);
-                hasMigrated.current = true; // Mark as migrating to prevent race
+                hasMigrated.current = true;
                 await migrateGuestToCloud();
                 console.log('[Migration] Success');
               } else {
-                hasMigrated.current = true; // Nothing to migrate
+                hasMigrated.current = true;
               }
             } catch (err) {
               console.error('[Migration] Failed', err);
-              hasMigrated.current = false; // Reset on failure so it can try again
+              hasMigrated.current = false;
             }
           }
         } else {
-          hasMigrated.current = false; // Reset for next user
+          hasMigrated.current = false;
         }
 
-        // Always refresh data when auth state changes
-        await fetchCategories();
-        await fetchData();
+        // console.log(event, "<<<< cek event");
+        
+
+        // 3. Only fetch data once on INITIAL_SESSION, or on actual sign-in/out
+        if (event === 'INITIAL_SESSION') {
+          if (!hasInitialized.current) {
+            hasInitialized.current = true;
+            await fetchCategories(true);
+            await fetchData(true);
+          }
+        } else if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          // Reset lastFetchedAt so data is fresh for new auth state
+          await fetchCategories(true);
+          await fetchData(true);
+        }
+        // TOKEN_REFRESHED → do nothing, data is still valid
       }
     );
 

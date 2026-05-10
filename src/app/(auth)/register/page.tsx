@@ -9,7 +9,7 @@ import TopAppBar from '@/components/TopAppBar'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { user, setUser } = useStore()
+  const { user } = useStore()
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -45,12 +45,11 @@ export default function RegisterPage() {
         return;
       }
 
-      // ── Sync Browser Client with Server Cookies ──
+      // ── Sign in on client side so onAuthStateChange fires SIGNED_IN ──
       const supabase = createClient();
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (supabaseUser) {
-        setUser(supabaseUser);
+      if (signInData?.user) {
         setMessage('Berhasil mendaftar! Mengalihkan...');
         setTimeout(() => router.push('/'), 1500);
       } else {
