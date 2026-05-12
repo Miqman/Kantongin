@@ -109,7 +109,7 @@ export default function SpendingChart() {
               />
               <YAxis hide />
               <Tooltip
-                cursor={{ fill: 'var(--app-surface-container)', borderRadius: 8 }}
+                cursor={{ fill: 'var(--app-surface-container)' }}
                 content={<CustomTooltip />}
               />
               {/* Pengeluaran — red/error */}
