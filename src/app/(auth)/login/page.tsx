@@ -88,7 +88,12 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2 group">
-            <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 ml-1 group-focus-within:text-primary transition-colors">Kata Sandi</label>
+            <div className="flex justify-between items-center ml-1">
+              <label className="font-label text-xs uppercase tracking-widest text-on-surface-variant/80 group-focus-within:text-primary transition-colors">Kata Sandi</label>
+              <Link href="/forgot-password" className="text-xs font-bold text-primary hover:underline">
+                Lupa Password?
+              </Link>
+            </div>
             <div className="bg-surface-container-low hover:bg-surface-container transition-all p-4 rounded-2xl flex items-center gap-4 border border-outline-variant/5 focus-within:bg-surface-bright focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/20">
               <span className="material-symbols-outlined text-on-surface-variant text-xl group-focus-within:text-primary transition-colors">lock</span>
               <input
