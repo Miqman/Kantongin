@@ -62,7 +62,7 @@ export default function LoginPage() {
       <main className="px-6 pt-12 max-w-sm mx-auto flex flex-col justify-center min-h-[70vh]">
         <div className="text-center mb-10">
           <h1 className="font-headline text-3xl font-bold tracking-tight mb-2">Masuk</h1>
-          <p className="text-on-surface-variant text-sm font-medium">Sinkronkan data Kantongin Anda</p>
+          <p className="text-on-surface-variant text-sm font-medium">Sinkronkan data Uangmu Anda</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

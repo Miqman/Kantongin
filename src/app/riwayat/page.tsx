@@ -1,8 +1,10 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import TransactionItem from '@/components/TransactionItem';
+import DateFilterPicker, { DateFilterValue } from '@/components/DateFilterPicker';
+import CategoryFilterPicker from '@/components/CategoryFilterPicker';
 
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
@@ -12,7 +14,7 @@ export default function Riwayat() {
   const { transactions, isLoading, deleteTransaction } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [filterTime, setFilterTime] = useState<'THIS_MONTH' | 'ALL'>('THIS_MONTH');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
 
   const handleDelete = async (id: string) => {
@@ -37,25 +39,35 @@ export default function Riwayat() {
 
   // Filter based on search query and active parameters
   const filteredTransactions = transactions.filter(trx => {
-     // 1. Search Logic
-     const text = `${trx.note || ''} ${trx.category?.name || ''}`.toLowerCase();
-     const matchesSearch = text.includes(searchQuery.toLowerCase());
+    // 1. Search Logic
+    const text = `${trx.note || ''} ${trx.category?.name || ''}`.toLowerCase();
+    const matchesSearch = text.includes(searchQuery.toLowerCase());
 
-     // 2. Time Filter Logic
-     let matchesTime = true;
-     if (filterTime === 'THIS_MONTH') {
-       const trxDate = new Date(trx.date);
-       const now = new Date();
-       matchesTime = trxDate.getMonth() === now.getMonth() && trxDate.getFullYear() === now.getFullYear();
-     }
+    // 2. Date Filter Logic
+    let matchesDate = true;
+    if (dateFilter) {
+      const trxDate = new Date(trx.date);
+      if (dateFilter.mode === 'RANGE') {
+        const from = dateFilter.from ? new Date(new Date(dateFilter.from).setHours(0, 0, 0, 0)) : null;
+        const to = dateFilter.to ? new Date(new Date(dateFilter.to).setHours(23, 59, 59, 999)) : null;
+        if (from) matchesDate = matchesDate && trxDate >= from;
+        if (to) matchesDate = matchesDate && trxDate <= to;
+      } else if (dateFilter.mode === 'MONTH') {
+        matchesDate =
+          trxDate.getMonth() === dateFilter.month &&
+          trxDate.getFullYear() === dateFilter.year;
+      } else if (dateFilter.mode === 'YEAR') {
+        matchesDate = trxDate.getFullYear() === dateFilter.year;
+      }
+    }
 
-     // 3. Category Filter Logic
-     let matchesCategory = true;
-     if (filterCategory !== 'ALL') {
-       matchesCategory = trx.category_id === filterCategory;
-     }
+    // 3. Category Filter Logic
+    let matchesCategory = true;
+    if (filterCategory !== 'ALL') {
+      matchesCategory = trx.category_id === filterCategory;
+    }
 
-     return matchesSearch && matchesTime && matchesCategory;
+    return matchesSearch && matchesDate && matchesCategory;
   });
 
   // Grouping Function by Date
@@ -63,14 +75,14 @@ export default function Riwayat() {
     const groups: Record<string, any[]> = {};
     trxs.forEach((trx) => {
       // Clean string "YYYY-MM-DD" without timezone interference issues locally
-      const dateKey = new Date(trx.date).toLocaleDateString('en-CA'); 
+      const dateKey = new Date(trx.date).toLocaleDateString('en-CA');
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(trx);
     });
-    
+
     // Convert to Array and sort by date descending
     return Object.keys(groups)
-      .sort((a,b) => b.localeCompare(a))
+      .sort((a, b) => b.localeCompare(a))
       .map(key => ({
         date: key,
         items: groups[key]
@@ -82,15 +94,16 @@ export default function Riwayat() {
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterday = yesterdayDate.toLocaleDateString('en-CA');
-    
+
     if (dateString === today) return "Hari Ini";
     if (dateString === yesterday) return "Kemarin";
-    
+
     // Regular date like "22 Mei 2024"
     return new Date(dateString).toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const groupedData = groupTransactions(filteredTransactions);
+  const hasActiveFilter = dateFilter !== null || filterCategory !== 'ALL' || searchQuery !== "";
 
   return (
     <>
@@ -107,52 +120,30 @@ export default function Riwayat() {
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-on-surface-variant/50 group-focus-within:text-primary transition-colors">
               <span className="material-symbols-outlined text-xl">search</span>
             </div>
-            <input 
+            <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-2xl py-3.5 pl-12 pr-6 text-on-surface placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-primary/15 focus:border-primary/30 shadow-sm transition-all font-medium outline-none" 
-              placeholder="Cari transaksi..." 
+              className="w-full bg-surface-container-lowest border border-outline-variant/15 rounded-2xl py-3.5 pl-12 pr-6 text-on-surface placeholder:text-on-surface-variant/40 focus:ring-2 focus:ring-primary/15 focus:border-primary/30 shadow-sm transition-all font-medium outline-none"
+              placeholder="Cari transaksi..."
               type="text"
             />
           </div>
           {/* Horizontal Filters */}
           <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-            <button 
-              onClick={() => setFilterTime(prev => prev === 'THIS_MONTH' ? 'ALL' : 'THIS_MONTH')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                filterTime === 'THIS_MONTH' ? 'bg-primary text-on-primary shadow-md shadow-primary/20' : 'bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-low shadow-sm'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-              {filterTime === 'THIS_MONTH' ? 'Bulan Ini' : 'Semua Waktu'}
-            </button>
-            
-            {/* Category Filter using invisible <select> for native seamless UX */}
-            <div className="relative flex">
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              >
-                <option value="ALL">Semua Kategori</option>
-                {uniqueCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-              <button 
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all pointer-events-none ${
-                  filterCategory !== 'ALL' ? 'bg-primary text-on-primary shadow-md shadow-primary/20' : 'bg-surface-container-lowest border border-outline-variant/20 text-on-surface-variant shadow-sm'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">category</span>
-                {filterCategory === 'ALL' ? 'Kategori' : uniqueCategories.find(c => c.id === filterCategory)?.name}
-              </button>
-            </div>
+            {/* Date Filter */}
+            <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
 
-            {/* Clear Filters conditionally renders */}
-            {(filterTime !== 'THIS_MONTH' || filterCategory !== 'ALL' || searchQuery !== "") && (
-              <button 
-                onClick={() => { setFilterTime('THIS_MONTH'); setFilterCategory('ALL'); setSearchQuery(""); }}
+            {/* Category Filter */}
+            <CategoryFilterPicker
+              value={filterCategory}
+              categories={uniqueCategories}
+              onChange={setFilterCategory}
+            />
+
+            {/* Clear Filters — conditionally renders */}
+            {hasActiveFilter && (
+              <button
+                onClick={() => { setDateFilter(null); setFilterCategory('ALL'); setSearchQuery(""); }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap hover:bg-error/20 transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">close</span>
@@ -165,14 +156,14 @@ export default function Riwayat() {
         {/* Transactions List Grouped by Date */}
         <section className="space-y-8">
           {isLoading ? (
-             <div className="flex justify-center items-center py-20">
-               <p className="font-medium text-on-surface-variant/50 animate-pulse">Menyelaraskan buku besar...</p>
-             </div>
+            <div className="flex justify-center items-center py-20">
+              <p className="font-medium text-on-surface-variant/50 animate-pulse">Menyelaraskan buku besar...</p>
+            </div>
           ) : groupedData.length === 0 ? (
-             <div className="flex flex-col items-center justify-center py-16 opacity-50">
-               <span className="material-symbols-outlined text-5xl mb-4">receipt_long</span>
-               <p className="font-body text-sm font-medium">Buku besar bersih. Tidak ada rekam jejak.</p>
-             </div>
+            <div className="flex flex-col items-center justify-center py-16 opacity-50">
+              <span className="material-symbols-outlined text-5xl mb-4">receipt_long</span>
+              <p className="font-body text-sm font-medium">Buku besar bersih. Tidak ada rekam jejak.</p>
+            </div>
           ) : (
             groupedData.map((group, index) => (
               <div key={group.date} className="space-y-3">
@@ -180,15 +171,19 @@ export default function Riwayat() {
                   <h3 className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">
                     {getLabelForDate(group.date)}
                   </h3>
-                  {index === 0 && <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full uppercase">Terkini</span>}
+                  {index === 0 && (
+                    <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full uppercase">
+                      Terkini
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-2.5">
                   {group.items.map(trx => {
                     const isIncome = Number(trx.amount) < 0;
                     const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
-                    
+
                     return (
-                      <TransactionItem 
+                      <TransactionItem
                         key={trx.id}
                         id={trx.id}
                         icon={trx.category?.icon || 'payments'}

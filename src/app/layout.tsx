@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Dompetku - Financial Luminary",
+  title: "Uangmu",
   description: "Modern, dynamic budget tracking and management",
   manifest: "/manifest.json",
   icons: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Dompetku",
+    title: "Uangmu",
   },
 };
 
@@ -72,8 +72,8 @@ export default function RootLayout({
         className={`${inter.variable} ${manrope.variable} font-body bg-surface text-on-surface antialiased min-h-screen pb-32`}
       >
         <AppInitializer />
-        <Toaster 
-          position="top-center" 
+        <Toaster
+          position="top-center"
           toastOptions={{
             style: {
               background: 'var(--app-surface-container-high)',

@@ -4,6 +4,7 @@ import TopAppBar from '@/components/TopAppBar';
 import HeroSection from '@/components/HeroSection';
 import SpendingChart from '@/components/SpendingChart';
 import RecentTransactions from '@/components/RecentTransactions';
+import GuestMigrationBanner from '@/components/GuestMigrationBanner';
 import BottomNavBar from '@/components/BottomNavBar';
 
 export default function Home() {
@@ -12,6 +13,7 @@ export default function Home() {
       <TopAppBar />
       <main className="px-6 py-8 max-w-2xl mx-auto space-y-10">
         <HeroSection />
+        <GuestMigrationBanner />
         <SpendingChart />
         <RecentTransactions />
       </main>
@@ -19,3 +21,4 @@ export default function Home() {
     </>
   );
 }
+

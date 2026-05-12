@@ -1,94 +1,121 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
+
+interface DayData {
+  dateStr: string;
+  dayName: string;
+  fullDate: string;
+  pengeluaran: number; // expenses (amount > 0)
+  pemasukan: number;   // income   (amount < 0, stored as positive)
+}
 
 export default function SpendingChart() {
   const { transactions, isLoading: loading } = useStore();
-  const [data, setData] = useState<{ dateStr: string; dayName: string; fullDate: string; amount: number }[]>([]);
+  const [data, setData] = useState<DayData[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (!loading) {
-      // Initialize last 7 days payload
-      const last7Days = Array.from({ length: 7 }).map((_, i) => {
+      // Initialize last 7 days
+      const last7: DayData[] = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
-        // Map dates in chronological order (7 days ago up to today)
         d.setDate(d.getDate() - (6 - i));
         return {
           dateStr: d.toLocaleDateString('en-CA'),
-          dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }), 
+          dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
           fullDate: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-          amount: 0
+          pengeluaran: 0,
+          pemasukan: 0,
         };
       });
 
-      // Group amounts
+      // Aggregate
       transactions.forEach((trx: any) => {
         const dateStr = new Date(trx.date).toLocaleDateString('en-CA');
-        const dayIndex = last7Days.findIndex(d => d.dateStr === dateStr);
-        if (dayIndex !== -1) {
-          last7Days[dayIndex].amount += Number(trx.amount);
-        }
+        const idx = last7.findIndex(d => d.dateStr === dateStr);
+        if (idx === -1) return;
+        const amt = Number(trx.amount);
+        if (amt > 0) last7[idx].pengeluaran += amt;      // expense
+        else         last7[idx].pemasukan  += Math.abs(amt); // income
       });
-      
-      setData(last7Days);
+
+      setData(last7);
     }
   }, [transactions, loading]);
 
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0]?.payload as DayData;
+    return (
+      <div className="bg-surface-container-highest px-4 py-3 rounded-2xl shadow-xl border border-outline-variant/10 text-xs space-y-1.5">
+        <p className="font-bold text-on-surface/80 uppercase tracking-widest text-[10px] mb-2">{d.fullDate}</p>
+        {d.pengeluaran > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-error flex-shrink-0" />
+            <span className="text-on-surface-variant">Keluar:</span>
+            <span className="font-bold text-on-surface">Rp {d.pengeluaran.toLocaleString('id-ID')}</span>
+          </div>
+        )}
+        {d.pemasukan > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-secondary flex-shrink-0" />
+            <span className="text-on-surface-variant">Masuk:</span>
+            <span className="font-bold text-on-surface">Rp {d.pemasukan.toLocaleString('id-ID')}</span>
+          </div>
+        )}
+        {d.pengeluaran === 0 && d.pemasukan === 0 && (
+          <p className="text-on-surface-variant/50">Tidak ada transaksi</p>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <div className="flex justify-between items-end">
-        <h2 className="font-headline text-lg font-semibold tracking-tight">Spending Trends</h2>
+        <h2 className="font-headline text-lg font-semibold tracking-tight">Tren Pengeluaran</h2>
         <span className="font-label text-[11px] font-medium text-on-surface-variant uppercase tracking-widest">7 Hari Terakhir</span>
       </div>
-      <div className="bg-surface-container-lowest p-6 rounded-[2rem] h-64 border border-outline-variant/5">
+
+      {/* Legend */}
+      <div className="flex gap-4">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-error" />
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pengeluaran</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm bg-secondary" />
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pemasukan</span>
+        </div>
+      </div>
+
+      <div className="bg-surface-container-lowest px-6 pt-6 pb-4 rounded-[2rem] border border-outline-variant/5">
         {!mounted || loading ? (
-          <div className="w-full h-full flex justify-center items-center">
+          <div className="flex justify-center items-center h-[200px]">
             <p className="text-on-surface-variant/50 text-sm animate-pulse font-medium">Menganalisis pengeluaran...</p>
           </div>
         ) : (
-          <ResponsiveContainer width="99%" height={200}>
-            <BarChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              <XAxis 
-                dataKey="dayName" 
-                axisLine={false} 
-                tickLine={false} 
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data} margin={{ top: 4, right: 0, left: -24, bottom: 0 }} barGap={2}>
+              <XAxis
+                dataKey="dayName"
+                axisLine={false}
+                tickLine={false}
                 tick={{ fill: 'var(--app-outline)', fontSize: 10, fontWeight: 700 }}
                 dy={10}
               />
               <YAxis hide />
-              <Tooltip 
-                cursor={{ fill: 'transparent' }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    return (
-                      <div className="bg-surface-container-highest p-3 rounded-2xl shadow-xl border border-outline-variant/10">
-                        <p className="font-label text-[10px] uppercase tracking-widest text-on-surface/80 mb-1 font-bold">{payload[0].payload.fullDate}</p>
-                        <p className="font-headline text-on-surface font-extrabold">
-                          Rp {Number(payload[0].value).toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
+              <Tooltip
+                cursor={{ fill: 'var(--app-surface-container)', borderRadius: 8 }}
+                content={<CustomTooltip />}
               />
-              <Bar dataKey="amount" radius={[8, 8, 8, 8]} barSize={24}>
-                {data.map((entry, index) => {
-                  const maxAmount = Math.max(...data.map(d => d.amount));
-                  // Extremely subtle distinct color for zero amounts or very low interaction
-                  if (entry.amount === 0) return <Cell key={`cell-${index}`} fill="var(--app-surface-container-highest)" opacity={0.2} />;
-                  
-                  // Highlight visually highest spending behavior with distinct shade
-                  if (entry.amount === maxAmount && maxAmount > 0) {
-                     return <Cell key={`cell-${index}`} fill="var(--app-error-container)" />;
-                  }
-                  // Normal day trend
-                  return <Cell key={`cell-${index}`} fill="var(--app-primary)" opacity={0.8} />;
-                })}
-              </Bar>
+              {/* Pengeluaran — red/error */}
+              <Bar dataKey="pengeluaran" radius={[6, 6, 4, 4]} barSize={10} fill="var(--app-error)" opacity={0.85} />
+              {/* Pemasukan — green/secondary */}
+              <Bar dataKey="pemasukan"   radius={[6, 6, 4, 4]} barSize={10} fill="var(--app-secondary)" opacity={0.85} />
             </BarChart>
           </ResponsiveContainer>
         )}

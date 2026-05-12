@@ -120,18 +120,30 @@ export default function HeroSection() {
           </div>
         </div>
         
-        {/* Sisa Budget (Spans 2 on mobile) */}
-        <div className="col-span-2 md:col-span-1 p-5 rounded-[1.5rem] bg-gradient-to-br from-primary to-primary-container text-on-primary-container flex flex-col justify-between aspect-auto shadow-lg">
-          <span className="material-symbols-outlined text-on-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
-          <div className="mt-4">
-            <p className="font-label text-[10px] font-bold text-on-primary-container/70 tracking-wider">Sisa Budget</p>
-            {loading ? (
-              <div className="h-6 w-24 bg-primary-fixed/20 animate-pulse rounded mt-1"></div>
-            ) : (
-              <p className="font-headline text-lg font-extrabold">Rp {formatCurrency(sisaBudget)}</p>
-            )}
+        {/* Sisa Budget — only shown when a budget is set */}
+        {sisaBudget !== 0 || (Array.isArray(bdgData) && bdgData.length > 0) ? (
+          <div className="col-span-2 md:col-span-1 p-5 rounded-[1.5rem] bg-gradient-to-br from-primary to-primary-container text-on-primary-container flex flex-col justify-between aspect-auto shadow-lg">
+            <span className="material-symbols-outlined text-on-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
+            <div className="mt-4">
+              <p className="font-label text-[10px] font-bold text-on-primary-container/70 tracking-wider">Sisa Budget</p>
+              {loading ? (
+                <div className="h-6 w-24 bg-primary-fixed/20 animate-pulse rounded mt-1"></div>
+              ) : (
+                <p className={`font-headline text-lg font-extrabold ${sisaBudget < 0 ? 'text-error' : ''}`}>
+                  Rp {formatCurrency(sisaBudget)}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="col-span-2 md:col-span-1 p-5 rounded-[1.5rem] bg-surface-container-low border border-dashed border-outline-variant/30 flex flex-col justify-between aspect-auto opacity-60">
+            <span className="material-symbols-outlined text-on-surface-variant">savings</span>
+            <div className="mt-4">
+              <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Budget Bulanan</p>
+              <p className="text-xs text-on-surface-variant/70 mt-1">Belum diset</p>
+            </div>
+          </div>
+        )}
       </section>
     </>
   );

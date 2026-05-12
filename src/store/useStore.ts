@@ -19,6 +19,9 @@ interface AppState {
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (id: string, data: any) => Promise<void>;
   
+  setBudget: (limitAmount: number, period?: string) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
+  
   addCategory: (data: any) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   updateCategory: (id: string, data: any) => Promise<void>;
@@ -192,6 +195,48 @@ export const useStore = create<AppState>((set, get) => ({
       await fetchData(true);
     } catch (error) {
       console.error('Update Transaction Error:', error);
+      throw error;
+    }
+  },
+
+  setBudget: async (limitAmount: number, period = 'monthly') => {
+    const { budgets, fetchData } = get();
+    try {
+      // Upsert: update existing global budget for this period, or insert new
+      const existing = Array.isArray(budgets)
+        ? budgets.find((b: any) => b.period === period && !b.category_id)
+        : null;
+
+      if (existing) {
+        const res = await fetch('/api/budgets', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: existing.id, limit_amount: limitAmount, period }),
+        });
+        if (!res.ok) throw new Error('Gagal update budget');
+      } else {
+        const res = await fetch('/api/budgets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit_amount: limitAmount, period }),
+        });
+        if (!res.ok) throw new Error('Gagal simpan budget');
+      }
+      await fetchData(true);
+    } catch (error) {
+      console.error('Set Budget Error:', error);
+      throw error;
+    }
+  },
+
+  deleteBudget: async (id: string) => {
+    const { fetchData } = get();
+    try {
+      const res = await fetch(`/api/budgets?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal hapus budget');
+      await fetchData(true);
+    } catch (error) {
+      console.error('Delete Budget Error:', error);
       throw error;
     }
   },

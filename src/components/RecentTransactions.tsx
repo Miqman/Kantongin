@@ -1,31 +1,58 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
+import { toast } from 'react-hot-toast';
 import TransactionItem from './TransactionItem';
 
 export default function RecentTransactions() {
-  const { transactions, isLoading: loading } = useStore();
+  const { transactions, isLoading: loading, deleteTransaction } = useStore();
+  const router = useRouter();
+
+  // Take the 5 most recent transactions (already sorted desc by store)
+  const recent = transactions.slice(0, 5);
+
+  const handleEdit = (id: string) => {
+    router.push(`/tambah?edit=${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTransaction(id);
+      toast.success('Transaksi berhasil dihapus');
+    } catch {
+      toast.error('Gagal menghapus transaksi');
+    }
+  };
 
   return (
     <section className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="font-headline text-lg font-bold tracking-tight">Transaksi Terakhir</h2>
-        <Link href="/riwayat" className='text-primary text-xs font-bold uppercase tracking-widest hover:opacity-80 active:scale-95 transition-all'>
+        <Link
+          href="/riwayat"
+          className="text-primary text-xs font-bold uppercase tracking-widest hover:opacity-80 active:scale-95 transition-all"
+        >
           Lihat Semua
         </Link>
       </div>
+
       <div className="space-y-2.5">
         {loading ? (
-          <p className="text-sm text-on-surface-variant text-center my-6">Memuat log transaksi...</p>
-        ) : transactions.length > 0 ? (
-          transactions.slice(0, 5).map((trx: any) => {
+          /* Skeleton */
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-16 rounded-2xl bg-surface-container-high animate-pulse" />
+          ))
+        ) : recent.length > 0 ? (
+          recent.map((trx: any) => {
             const isIncome = Number(trx.amount) < 0;
             const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
-            
+
             return (
               <TransactionItem
                 key={trx.id}
+                id={trx.id}
                 icon={trx.category?.icon || 'payments'}
                 category={trx.category?.name || 'Tanpa Kategori'}
                 vendor={trx.note || 'Transaksi Biasa'}
@@ -33,6 +60,8 @@ export default function RecentTransactions() {
                 date={new Date(trx.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
                 isIncome={isIncome}
                 iconColorClass={isIncome ? "text-secondary" : "text-primary"}
+                onEdit={() => handleEdit(trx.id)}
+                onDelete={() => handleDelete(trx.id)}
               />
             );
           })

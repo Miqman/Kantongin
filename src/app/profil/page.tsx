@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import GoogleSheetsCard from '@/components/GoogleSheetsCard';
+import BudgetCard from '@/components/BudgetCard';
 import { useStore } from '@/store/useStore';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'react-hot-toast';
 
 function getInitials(email: string): string {
   return email.charAt(0).toUpperCase();
@@ -14,9 +16,11 @@ function getInitials(email: string): string {
 
 export default function Profil() {
   const router = useRouter();
-  const { user } = useStore();
+  const { user, transactions } = useStore();
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Load theme preference on mount
   useEffect(() => {
@@ -62,6 +66,131 @@ export default function Profil() {
       console.error('Logout error:', err);
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  // ── EXPORT CSV ──
+  const handleExportCsv = () => {
+    if (transactions.length === 0) {
+      toast.error('Tidak ada data transaksi untuk diekspor.');
+      return;
+    }
+    setIsExportingCsv(true);
+    try {
+      const header = ['Tanggal', 'Kategori', 'Catatan', 'Jumlah (Rp)', 'Tipe'];
+      const rows = transactions.map((t) => [
+        new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+        t.category?.name ?? 'Tanpa Kategori',
+        t.note ?? '',
+        Math.abs(Number(t.amount)),
+        Number(t.amount) < 0 ? 'Pemasukan' : 'Pengeluaran',
+      ]);
+
+      const csvContent =
+        '\uFEFF' + // BOM agar Excel bisa baca karakter ID
+        [header, ...rows]
+          .map((row) =>
+            row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+          )
+          .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `uangmu-transaksi-${new Date().toLocaleDateString('en-CA')}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('CSV berhasil diunduh!');
+    } catch (err) {
+      console.error('Export CSV error:', err);
+      toast.error('Gagal mengekspor CSV.');
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
+  // ── EXPORT PDF ──
+  const handleExportPdf = async () => {
+    if (transactions.length === 0) {
+      toast.error('Tidak ada data transaksi untuk diekspor.');
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      // Dynamic import agar tidak mempengaruhi bundle size
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // ── Header ──
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Uangmu – Laporan Transaksi', 14, 18);
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120);
+      doc.text(
+        `Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+        14,
+        25
+      );
+      doc.setTextColor(0);
+
+      // ── Summary ──
+      const totalPemasukan = transactions
+        .filter((t) => Number(t.amount) < 0)
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+      const totalPengeluaran = transactions
+        .filter((t) => Number(t.amount) >= 0)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+
+      doc.setFontSize(9);
+      doc.text(
+        `Total Pemasukan: Rp ${totalPemasukan.toLocaleString('id-ID')}   |   Total Pengeluaran: Rp ${totalPengeluaran.toLocaleString('id-ID')}`,
+        14,
+        31
+      );
+
+      // ── Table ──
+      const head = [['Tanggal', 'Kategori', 'Catatan', 'Tipe', 'Jumlah (Rp)']];
+      const body = [...transactions]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .map((t) => [
+          new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+          t.category?.name ?? 'Tanpa Kategori',
+          t.note ?? '-',
+          Number(t.amount) < 0 ? 'Pemasukan' : 'Pengeluaran',
+          Math.abs(Number(t.amount)).toLocaleString('id-ID'),
+        ]);
+
+      const foot = [[
+        { content: 'TOTAL PENGELUARAN', colSpan: 4, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+        { content: `Rp ${totalPengeluaran.toLocaleString('id-ID')}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+      ]];
+
+      autoTable(doc, {
+        head,
+        body,
+        foot,
+        startY: 36,
+        showFoot: 'lastPage',
+        styles: { fontSize: 8, cellPadding: 2.5 },
+        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 250] },
+        footStyles: { fillColor: [232, 232, 250], textColor: [50, 50, 120], fontSize: 8.5 },
+        columnStyles: { 4: { halign: 'right' } },
+      });
+
+      doc.save(`uangmu-transaksi-${new Date().toLocaleDateString('en-CA')}.pdf`);
+      toast.success('PDF berhasil diunduh!');
+    } catch (err) {
+      console.error('Export PDF error:', err);
+      toast.error('Gagal mengekspor PDF.');
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -154,17 +283,7 @@ export default function Profil() {
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <GoogleSheetsCard />
 
-            <div className="bg-surface-container-low p-6 rounded-[2rem] flex flex-col justify-between border border-primary/10">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                  <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-headline font-bold text-lg">Budget Limit</h3>
-                <p className="text-on-surface-variant text-sm mt-1">Atur batas pengeluaran bulanan</p>
-              </div>
-            </div>
+            <BudgetCard />
           </section>
         )}
 
@@ -218,13 +337,29 @@ export default function Profil() {
             Operasi Data
           </h2>
           <div className="grid grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer">
-              <span className="material-symbols-outlined text-on-surface-variant text-lg">csv</span>
-              <span className="font-medium text-sm">Export CSV</span>
+            <button
+              onClick={handleExportCsv}
+              disabled={isExportingCsv}
+              className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest active:scale-95 transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+            >
+              {isExportingCsv ? (
+                <span className="material-symbols-outlined text-on-surface-variant text-lg animate-spin">progress_activity</span>
+              ) : (
+                <span className="material-symbols-outlined text-on-surface-variant text-lg">csv</span>
+              )}
+              <span className="font-medium text-sm">{isExportingCsv ? 'Mengekspor...' : 'Export CSV'}</span>
             </button>
-            <button className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer">
-              <span className="material-symbols-outlined text-on-surface-variant text-lg">picture_as_pdf</span>
-              <span className="font-medium text-sm">Export PDF</span>
+            <button
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest active:scale-95 transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+            >
+              {isExportingPdf ? (
+                <span className="material-symbols-outlined text-on-surface-variant text-lg animate-spin">progress_activity</span>
+              ) : (
+                <span className="material-symbols-outlined text-on-surface-variant text-lg">picture_as_pdf</span>
+              )}
+              <span className="font-medium text-sm">{isExportingPdf ? 'Mengekspor...' : 'Export PDF'}</span>
             </button>
           </div>
         </section>
@@ -244,7 +379,7 @@ export default function Profil() {
             </button>
           ) : null}
           <p className="text-center text-[10px] text-on-surface-variant/40 mt-4 uppercase tracking-widest font-label">
-            Kantongin v1.0 • {user ? 'Cloud Mode' : 'Guest Mode'}
+            Uangmu v1.0 • {user ? 'Cloud Mode' : 'Guest Mode'}
           </p>
         </footer>
       </main>

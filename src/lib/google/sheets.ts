@@ -23,7 +23,7 @@ export async function createSpreadsheet(accessToken: string, userEmail: string):
   const response = await sheets.spreadsheets.create({
     requestBody: {
       properties: {
-        title: `Dompetku - Keuangan (${userEmail})`,
+        title: `Uangmu - Keuangan (${userEmail})`,
       },
       sheets: [
         { properties: { title: 'Transaksi', index: 0 } }

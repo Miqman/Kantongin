@@ -43,7 +43,7 @@ export default function TopAppBar() {
 
         <div>
           <h1 className="font-headline text-xl font-bold tracking-tighter text-on-surface leading-tight">
-            Kantongin
+            Uangmu
           </h1>
           {user ? (
             <p className="text-[10px] text-on-surface-variant/70 font-medium leading-none truncate max-w-[160px]">

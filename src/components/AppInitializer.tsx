@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useStore } from '@/store/useStore';
 import { migrateGuestToCloud } from '@/lib/sync';
+import { toast } from 'react-hot-toast';
 import db from '@/lib/dexie';
 
 // Module-level flags survive React Strict Mode remounts
@@ -33,14 +34,19 @@ export default function AppInitializer() {
               if (localCount > 0) {
                 console.log(`[Migration] Starting for ${user.email}`);
                 globalMigrated = true;
-                await migrateGuestToCloud();
+                const migratedCount = await migrateGuestToCloud();
                 console.log('[Migration] Success');
+                toast.success(
+                  `✅ ${migratedCount} transaksi berhasil disinkronkan ke cloud!`,
+                  { duration: 5000 }
+                );
               } else {
                 globalMigrated = true;
               }
             } catch (err) {
               console.error('[Migration] Failed', err);
               globalMigrated = false;
+              toast.error('Gagal menyinkronkan data lokal. Data Anda tetap aman di perangkat ini.', { duration: 6000 });
             }
           }
         } else {
