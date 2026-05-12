@@ -179,9 +179,11 @@ export default function GoogleSheetsCard() {
             onClick={handleDisconnect}
             disabled={disconnecting}
             className="w-12 h-12 flex items-center justify-center rounded-full bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50 cursor-pointer"
-            title="Putuskan koneksi"
+            title={disconnecting ? 'Memutuskan...' : 'Putuskan koneksi'}
           >
-            <span className="material-symbols-outlined text-lg">link_off</span>
+            <span className={`material-symbols-outlined text-lg ${disconnecting ? 'animate-spin' : ''}`}>
+              {disconnecting ? 'progress_activity' : 'link_off'}
+            </span>
           </button>
         </div>
 

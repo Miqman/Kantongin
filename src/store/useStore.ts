@@ -28,6 +28,11 @@ interface AppState {
   setUser: (user: any | null) => void;
 }
 
+// ── In-flight deduplication ─────────────────────────────────────────────────
+// Ensures concurrent calls to fetchData / fetchCategories share one request.
+let fetchDataInFlight: Promise<void> | null = null;
+let fetchCatsInFlight: Promise<void> | null = null;
+
 const DEFAULT_CATEGORIES = [
   { name: 'Makan & Minum', icon: 'restaurant', color: '#ff9800' },
   { name: 'Transportasi', icon: 'directions_car', color: '#2196f3' },
@@ -55,16 +60,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   fetchData: async (force = false) => {
+    // Deduplicate: if a fetch is already in-flight, return the same promise
+    if (fetchDataInFlight) return fetchDataInFlight;
+
     // Skip if data was fetched recently (within 30 seconds) unless forced
     const { lastFetchedAt } = get();
-    if (!force && lastFetchedAt && Date.now() - lastFetchedAt < 30000) {
-      return;
-    }
+    if (!force && lastFetchedAt && Date.now() - lastFetchedAt < 30000) return;
 
-    set({ isLoading: true, error: null });
-    const { user } = get();
-    
-    try {
+    fetchDataInFlight = (async () => {
+      set({ isLoading: true, error: null });
+      const { user } = get();
+      try {
       if (user) {
         const [txRes, bdgRes] = await Promise.all([
           fetch('/api/transactions'),
@@ -94,20 +100,26 @@ export const useStore = create<AppState>((set, get) => ({
 
         set({ transactions: txWithCategories, budgets: [], isLoading: false, lastFetchedAt: Date.now() });
       }
-    } catch (error) {
-      console.error('Fetch Error:', error);
-      set({ error: 'Gagal mengambil data', isLoading: false });
-    }
+      } catch (error) {
+        console.error('Fetch Error:', error);
+        set({ error: 'Gagal mengambil data', isLoading: false });
+      } finally {
+        fetchDataInFlight = null;
+      }
+    })();
+
+    return fetchDataInFlight;
   },
 
   fetchCategories: async (force = false) => {
-    const { user, categories } = get();
-    // Skip if categories already loaded unless forced
-    if (!force && categories.length > 0) {
-      return;
-    }
+    // Deduplicate concurrent calls
+    if (fetchCatsInFlight) return fetchCatsInFlight;
 
-    try {
+    const { user, categories } = get();
+    if (!force && categories.length > 0) return;
+
+    fetchCatsInFlight = (async () => {
+      try {
       if (user) {
         const res = await fetch('/api/categories');
         const data = await res.json();
@@ -129,9 +141,14 @@ export const useStore = create<AppState>((set, get) => ({
         }
         set({ categories: cats });
       }
-    } catch (error) {
-      console.error('Fetch Categories Error:', error);
-    }
+      } catch (error) {
+        console.error('Fetch Categories Error:', error);
+      } finally {
+        fetchCatsInFlight = null;
+      }
+    })();
+
+    return fetchCatsInFlight;
   },
 
   addTransaction: async (data: any) => {
