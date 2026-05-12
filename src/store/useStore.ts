@@ -98,7 +98,9 @@ export const useStore = create<AppState>((set, get) => ({
           category: catMap.get(tx.category_id) || null
         }));
 
-        set({ transactions: txWithCategories, budgets: [], isLoading: false, lastFetchedAt: Date.now() });
+        const bdgData = await db.budgets.toArray();
+
+        set({ transactions: txWithCategories, budgets: bdgData, isLoading: false, lastFetchedAt: Date.now() });
       }
       } catch (error) {
         console.error('Fetch Error:', error);
@@ -217,27 +219,41 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setBudget: async (limitAmount: number, period = 'monthly') => {
-    const { budgets, fetchData } = get();
+    const { user, budgets, fetchData } = get();
     try {
       // Upsert: update existing global budget for this period, or insert new
       const existing = Array.isArray(budgets)
         ? budgets.find((b: any) => b.period === period && !b.category_id)
         : null;
 
-      if (existing) {
-        const res = await fetch('/api/budgets', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: existing.id, limit_amount: limitAmount, period }),
-        });
-        if (!res.ok) throw new Error('Gagal update budget');
+      if (user) {
+        if (existing) {
+          const res = await fetch('/api/budgets', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: existing.id, limit_amount: limitAmount, period }),
+          });
+          if (!res.ok) throw new Error('Gagal update budget');
+        } else {
+          const res = await fetch('/api/budgets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit_amount: limitAmount, period }),
+          });
+          if (!res.ok) throw new Error('Gagal simpan budget');
+        }
       } else {
-        const res = await fetch('/api/budgets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ limit_amount: limitAmount, period }),
-        });
-        if (!res.ok) throw new Error('Gagal simpan budget');
+        if (existing) {
+          await db.budgets.update(existing.id, { limit_amount: limitAmount });
+        } else {
+          await db.budgets.add({
+            id: generateId(),
+            user_id: null,
+            category_id: null,
+            limit_amount: limitAmount,
+            period: period
+          });
+        }
       }
       await fetchData(true);
     } catch (error) {
@@ -247,10 +263,14 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteBudget: async (id: string) => {
-    const { fetchData } = get();
+    const { user, fetchData } = get();
     try {
-      const res = await fetch(`/api/budgets?id=${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Gagal hapus budget');
+      if (user) {
+        const res = await fetch(`/api/budgets?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Gagal hapus budget');
+      } else {
+        await db.budgets.delete(id);
+      }
       await fetchData(true);
     } catch (error) {
       console.error('Delete Budget Error:', error);

@@ -108,9 +108,31 @@ export async function migrateGuestToCloud(): Promise<number> {
   const migratedCount: number = result.count ?? 0;
   console.log(`[Sync] ✅ Successfully migrated ${migratedCount} transactions to Supabase.`);
 
+  // ─── STEP 4.5: Migrate budgets ─────────────────────────────────────
+  const localBudgets = await db.budgets.toArray();
+  if (localBudgets.length > 0) {
+    console.log(`[Sync] Migrating ${localBudgets.length} budgets...`);
+    for (const b of localBudgets) {
+      try {
+        await fetch('/api/budgets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            limit_amount: b.limit_amount,
+            period: b.period,
+            category_id: b.category_id ? (categoryIdMap.get(b.category_id) ?? b.category_id) : null
+          })
+        });
+      } catch (err) {
+        console.warn('[Sync] Failed to migrate budget:', err);
+      }
+    }
+  }
+
   // ─── STEP 5: Clear local IndexedDB (only after confirmed success) ─
   await db.transactions.clear();
   await db.categories.clear();
+  await db.budgets.clear();
   console.log('[Sync] Local IndexedDB cleared.');
 
   return migratedCount;

@@ -19,6 +19,14 @@ export interface LocalCategory {
   is_default: boolean;
 }
 
+export interface LocalBudget {
+  id: string;
+  user_id: string | null;
+  category_id: string | null;
+  limit_amount: number;
+  period: string;
+}
+
 const db = new Dexie('KantonginDB') as Dexie & {
   transactions: EntityTable<
     LocalTransaction,
@@ -28,12 +36,22 @@ const db = new Dexie('KantonginDB') as Dexie & {
     LocalCategory,
     'id' // primary key "id"
   >;
+  budgets: EntityTable<
+    LocalBudget,
+    'id' // primary key "id"
+  >;
 };
 
 // Schema declaration
 db.version(1).stores({
   transactions: 'id, date, category_id', // Primary key and indexed props
   categories: 'id, is_default' // Primary key and indexed props
+});
+
+db.version(2).stores({
+  transactions: 'id, date, category_id',
+  categories: 'id, is_default',
+  budgets: 'id, period'
 });
 
 export type { db };
