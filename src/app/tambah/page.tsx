@@ -25,7 +25,7 @@ function TambahTransaksiContent() {
   const [amount, setAmount] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ function TambahTransaksiContent() {
         setAmount(Math.abs(Number(txToEdit.amount)).toString());
         setSelectedCategoryId(txToEdit.category_id);
         setNote(txToEdit.note || '');
-        setDate(new Date(txToEdit.date).toISOString().split('T')[0]);
+        setDate(txToEdit.date);
       }
     }
   }, [editId, transactions]);
@@ -65,7 +65,7 @@ function TambahTransaksiContent() {
           amount: finalAmount,
           category_id: selectedCategoryId,
           note,
-          date: new Date(date).toISOString(),
+          date,
         });
         toast.success("Transaksi berhasil diperbarui");
       } else {
@@ -73,7 +73,7 @@ function TambahTransaksiContent() {
           amount: finalAmount,
           category_id: selectedCategoryId,
           note,
-          date: new Date(date).toISOString(),
+          date,
         });
         toast.success("Transaksi berhasil disimpan");
       }
@@ -118,9 +118,10 @@ function TambahTransaksiContent() {
             <span className={`font-headline text-2xl font-extrabold mr-2 ${transactionType === 'expense' ? 'text-primary' : 'text-secondary'}`}>Rp</span>
             <input
               autoFocus
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              type="text"
+              inputMode="numeric"
+              value={amount ? Number(amount).toLocaleString('id-ID') : ''}
+              onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
               className={`bg-transparent border-none focus:ring-0 p-0 font-headline text-5xl font-extrabold w-full max-w-[240px] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${transactionType === 'expense' ? 'text-on-surface selection:bg-primary/30' : 'text-secondary selection:bg-secondary/30'}`}
               placeholder="0"
             />
