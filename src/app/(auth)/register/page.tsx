@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useStore } from '@/store/useStore'
 import Link from 'next/link'
 import TopAppBar from '@/components/TopAppBar'
+import GoogleSignInButton from '@/components/GoogleSignInButton'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -124,6 +125,16 @@ export default function RegisterPage() {
             {loading ? 'Memproses...' : 'Buat Akun & Sinkronkan Data'}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-6">
+          <div className="flex-1 h-px bg-outline-variant/30" />
+          <span className="text-xs font-medium text-on-surface-variant/60 uppercase tracking-widest">atau daftar dengan</span>
+          <div className="flex-1 h-px bg-outline-variant/30" />
+        </div>
+
+        {/* Google OAuth — juga berfungsi sebagai registrasi otomatis */}
+        <GoogleSignInButton />
 
         <div className="mt-8 text-center text-sm text-on-surface-variant">
           Sudah punya akun?{' '}

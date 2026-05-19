@@ -1,16 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useStore } from '@/store/useStore'
 import Link from 'next/link'
 import TopAppBar from '@/components/TopAppBar'
+import GoogleSignInButton from '@/components/GoogleSignInButton'
 
-export default function LoginPage() {
+// ── Inner component (uses useSearchParams → harus dalam Suspense) ──
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useStore()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    searchParams.get('message')
+  )
   const [loading, setLoading] = useState(false)
 
   // Already logged in → go home
@@ -115,6 +120,16 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-6">
+          <div className="flex-1 h-px bg-outline-variant/30" />
+          <span className="text-xs font-medium text-on-surface-variant/60 uppercase tracking-widest">atau</span>
+          <div className="flex-1 h-px bg-outline-variant/30" />
+        </div>
+
+        {/* Google OAuth */}
+        <GoogleSignInButton />
+
         <div className="mt-8 text-center text-sm text-on-surface-variant">
           Belum punya akun?{' '}
           <Link href="/register" className="text-primary font-bold hover:underline">
@@ -123,5 +138,14 @@ export default function LoginPage() {
         </div>
       </main>
     </>
+  )
+}
+
+// ── Page export: bungkus dengan Suspense agar useSearchParams aman saat build ──
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
