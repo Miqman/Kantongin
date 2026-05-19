@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import TransactionItem from '@/components/TransactionItem';
@@ -9,33 +9,66 @@ import CategoryFilterPicker from '@/components/CategoryFilterPicker';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import { toast } from 'react-hot-toast';
+import type { Transaction, Category } from '@/types';
 
 export default function Riwayat() {
-  const { transactions, isLoading, deleteTransaction } = useStore();
-  const [searchQuery, setSearchQuery] = useState("");
+  const {
+    transactions,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    deleteTransaction,
+    loadMoreTransactions,
+  } = useStore();
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilterValue | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
+
+  const router = useRouter();
+
+  // ── Infinite scroll via Intersection Observer ──
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || isLoadingMore) return;
+    await loadMoreTransactions();
+  }, [hasMore, isLoadingMore, loadMoreTransactions]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      { rootMargin: '200px' } // Trigger 200px before reaching bottom
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleLoadMore]);
 
   const handleDelete = async (id: string) => {
     try {
       await deleteTransaction(id);
       toast.success('Transaksi berhasil dihapus');
-    } catch (error) {
+    } catch {
       toast.error('Terjadi kesalahan koneksi saat menghapus.');
     }
   };
-
-  const router = useRouter();
 
   const handleEdit = (id: string) => {
     router.push(`/tambah?edit=${id}`);
   };
 
   // Get unique categories natively from loaded transactions
-  const uniqueCategories = Array.from(new Set(transactions.map(t => t.category_id)))
+  const uniqueCategories: Category[] = Array.from(new Set(transactions.map(t => t.category_id)))
     .map(id => transactions.find(t => t.category_id === id)?.category)
-    .filter(Boolean);
+    .filter((c): c is Category => c != null);
 
   // Filter based on search query and active parameters
   const filteredTransactions = transactions.filter(trx => {
@@ -71,22 +104,17 @@ export default function Riwayat() {
   });
 
   // Grouping Function by Date
-  const groupTransactions = (trxs: any[]) => {
-    const groups: Record<string, any[]> = {};
+  const groupTransactions = (trxs: Transaction[]) => {
+    const groups: Record<string, Transaction[]> = {};
     trxs.forEach((trx) => {
-      // Clean string "YYYY-MM-DD" without timezone interference issues locally
       const dateKey = new Date(trx.date).toLocaleDateString('en-CA');
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(trx);
     });
 
-    // Convert to Array and sort by date descending
     return Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
-      .map(key => ({
-        date: key,
-        items: groups[key]
-      }));
+      .map(key => ({ date: key, items: groups[key] }));
   };
 
   const getLabelForDate = (dateString: string) => {
@@ -97,8 +125,6 @@ export default function Riwayat() {
 
     if (dateString === today) return "Hari Ini";
     if (dateString === yesterday) return "Kemarin";
-
-    // Regular date like "22 Mei 2024"
     return new Date(dateString).toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
@@ -130,17 +156,12 @@ export default function Riwayat() {
           </div>
           {/* Horizontal Filters */}
           <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-            {/* Date Filter */}
             <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
-
-            {/* Category Filter */}
             <CategoryFilterPicker
               value={filterCategory}
               categories={uniqueCategories}
               onChange={setFilterCategory}
             />
-
-            {/* Clear Filters — conditionally renders */}
             {hasActiveFilter && (
               <button
                 onClick={() => { setDateFilter(null); setFilterCategory('ALL'); setSearchQuery(""); }}
@@ -165,42 +186,64 @@ export default function Riwayat() {
               <p className="font-body text-sm font-medium">Buku besar bersih. Tidak ada rekam jejak.</p>
             </div>
           ) : (
-            groupedData.map((group, index) => (
-              <div key={group.date} className="space-y-3">
-                <div className="flex justify-between items-center px-1">
-                  <h3 className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">
-                    {getLabelForDate(group.date)}
-                  </h3>
-                  {index === 0 && (
-                    <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full uppercase">
-                      Terkini
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2.5">
-                  {group.items.map(trx => {
-                    const isIncome = Number(trx.amount) < 0;
-                    const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
+            <>
+              {groupedData.map((group, index) => (
+                <div key={group.date} className="space-y-3">
+                  <div className="flex justify-between items-center px-1">
+                    <h3 className="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">
+                      {getLabelForDate(group.date)}
+                    </h3>
+                    {index === 0 && (
+                      <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full uppercase">
+                        Terkini
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2.5">
+                    {group.items.map(trx => {
+                      const isIncome = Number(trx.amount) < 0;
+                      const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
 
-                    return (
-                      <TransactionItem
-                        key={trx.id}
-                        id={trx.id}
-                        icon={trx.category?.icon || 'payments'}
-                        category={trx.category?.name || 'Tanpa Kategori'}
-                        vendor={trx.note || 'Transaksi Kriptik'}
-                        amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
-                        date={new Date(trx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
-                        isIncome={isIncome}
-                        iconColorClass={isIncome ? "text-secondary" : "text-primary"}
-                        onDelete={() => handleDelete(trx.id)}
-                        onEdit={() => handleEdit(trx.id)}
-                      />
-                    );
-                  })}
+                      return (
+                        <TransactionItem
+                          key={trx.id}
+                          id={trx.id}
+                          icon={trx.category?.icon || 'payments'}
+                          category={trx.category?.name || 'Tanpa Kategori'}
+                          vendor={trx.note || 'Transaksi Kriptik'}
+                          amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
+                          date={new Date(trx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
+                          isIncome={isIncome}
+                          iconColorClass={isIncome ? "text-secondary" : "text-primary"}
+                          onDelete={() => handleDelete(trx.id)}
+                          onEdit={() => handleEdit(trx.id)}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {/* ── Infinite scroll sentinel ── */}
+              <div ref={sentinelRef} className="h-4" aria-hidden="true" />
+
+              {/* Loading more indicator */}
+              {isLoadingMore && (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center gap-2 text-on-surface-variant/50">
+                    <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                    <span className="text-sm font-medium">Memuat lebih banyak...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* End of list indicator */}
+              {!hasMore && transactions.length > 0 && !isLoadingMore && (
+                <p className="text-center text-[11px] text-on-surface-variant/30 uppercase tracking-widest font-label py-2">
+                  — Semua transaksi telah dimuat —
+                </p>
+              )}
+            </>
           )}
         </section>
       </main>

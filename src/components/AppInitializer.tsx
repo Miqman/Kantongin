@@ -5,6 +5,9 @@ import { useStore } from '@/store/useStore';
 import { migrateGuestToCloud } from '@/lib/sync';
 import { toast } from 'react-hot-toast';
 import db from '@/lib/dexie';
+import { logger } from '@/lib/logger';
+import type { AppUser } from '@/types';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 // Module-level flags survive React Strict Mode remounts
 let globalInitialized = false;
@@ -19,9 +22,9 @@ export default function AppInitializer() {
 
     // ── onAuthStateChange: single source of truth ──
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: string, session: any) => {
-        const user = session?.user ?? null;
-        console.log(`[Auth Event] ${event}`, user?.email);
+      async (event: AuthChangeEvent, session: Session | null) => {
+        const user = (session?.user ?? null) as AppUser | null;
+        logger.log(`[Auth Event] ${event}`, user?.email);
 
         // 1. Update store state first
         setUser(user);
@@ -32,10 +35,10 @@ export default function AppInitializer() {
             try {
               const localCount = await db.transactions.count();
               if (localCount > 0) {
-                console.log(`[Migration] Starting for ${user.email}`);
+                logger.log(`[Migration] Starting for ${user.email}`);
                 globalMigrated = true;
                 const migratedCount = await migrateGuestToCloud();
-                console.log('[Migration] Success');
+                logger.log('[Migration] Success');
                 toast.success(
                   `✅ ${migratedCount} transaksi berhasil disinkronkan ke cloud!`,
                   { duration: 5000 }
@@ -44,7 +47,7 @@ export default function AppInitializer() {
                 globalMigrated = true;
               }
             } catch (err) {
-              console.error('[Migration] Failed', err);
+              logger.error('[Migration] Failed', err);
               globalMigrated = false;
               toast.error('Gagal menyinkronkan data lokal. Data Anda tetap aman di perangkat ini.', { duration: 6000 });
             }

@@ -226,7 +226,7 @@ export default function Profil() {
             {user ? (
               <>
                 <h1 className="text-3xl font-headline font-extrabold tracking-tight text-on-surface">
-                  {user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Pengguna'}
+                  {(user.user_metadata?.full_name as string | undefined) ?? user.email?.split('@')[0] ?? 'Pengguna'}
                 </h1>
                 <p className="text-on-surface-variant font-medium mt-1">{user.email}</p>
                 <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest">

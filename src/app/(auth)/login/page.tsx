@@ -33,29 +33,27 @@ function LoginForm() {
     const password = formData.get('password') as string
 
     try {
-      // ── Hit API Login instead of direct Supabase ──
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      // ── Login langsung via Supabase client (satu round-trip) ──
+      // AppInitializer sudah listen onAuthStateChange → tidak perlu server route
+      const supabase = createClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Gagal masuk');
-        setLoading(false);
-        return;
+      if (authError) {
+        const msg = authError.message === 'Invalid login credentials'
+          ? 'Email atau kata sandi salah'
+          : authError.message
+        setError(msg)
+        setLoading(false)
+        return
       }
 
-      // ── Sign in on client side too so onAuthStateChange fires SIGNED_IN ──
-      const supabase = createClient();
-      await supabase.auth.signInWithPassword({ email, password });
-
       router.push('/')
-    } catch (err) {
-      setError('Terjadi kesalahan koneksi');
-      setLoading(false);
+    } catch {
+      setError('Terjadi kesalahan koneksi')
+      setLoading(false)
     }
   }
 

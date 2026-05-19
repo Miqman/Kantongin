@@ -1,109 +1,143 @@
 import { create } from 'zustand';
 import { createClient } from '@/lib/supabase/client';
 import db, { generateId } from '@/lib/dexie';
+import { logger } from '@/lib/logger';
+import type {
+  AppUser,
+  Transaction,
+  Budget,
+  Category,
+  TransactionInput,
+  CategoryInput,
+  BudgetInput,
+  BudgetPeriod,
+} from '@/types';
+
+// ── State & actions interface ─────────────────────────────────────────────────
 
 interface AppState {
-  transactions: any[];
-  budgets: any[];
-  categories: any[];
+  transactions: Transaction[];
+  budgets: Budget[];
+  categories: Category[];
   isLoading: boolean;
+  isLoadingMore: boolean;    // For infinite scroll "load more" state
+  hasMore: boolean;          // Whether more pages are available
+  nextCursor: string | null; // Cursor for the next page
   error: string | null;
-  user: any | null;
+  user: AppUser | null;
   lastFetchedAt: number | null;
-  
+
   checkAuth: () => Promise<void>;
   fetchData: (force?: boolean) => Promise<void>;
+  loadMoreTransactions: () => Promise<void>; // Infinite scroll: append next page
   fetchCategories: (force?: boolean) => Promise<void>;
-  
-  addTransaction: (data: any) => Promise<void>;
+
+  addTransaction: (data: TransactionInput) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
-  updateTransaction: (id: string, data: any) => Promise<void>;
-  
-  setBudget: (limitAmount: number, period?: string) => Promise<void>;
+  updateTransaction: (id: string, data: Partial<TransactionInput>) => Promise<void>;
+
+  setBudget: (limitAmount: number, period?: BudgetPeriod) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
-  
-  addCategory: (data: any) => Promise<void>;
+
+  addCategory: (data: CategoryInput) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
-  updateCategory: (id: string, data: any) => Promise<void>;
-  setUser: (user: any | null) => void;
+  updateCategory: (id: string, data: Partial<CategoryInput>) => Promise<void>;
+  setUser: (user: AppUser | null) => void;
 }
 
-// ── In-flight deduplication ─────────────────────────────────────────────────
-// Ensures concurrent calls to fetchData / fetchCategories share one request.
+// ── In-flight deduplication ───────────────────────────────────────────────────
 let fetchDataInFlight: Promise<void> | null = null;
 let fetchCatsInFlight: Promise<void> | null = null;
 
-const DEFAULT_CATEGORIES = [
+const DEFAULT_CATEGORIES: CategoryInput[] = [
   { name: 'Makan & Minum', icon: 'restaurant', color: '#ff9800' },
   { name: 'Transportasi', icon: 'directions_car', color: '#2196f3' },
   { name: 'Belanja', icon: 'shopping_cart', color: '#e91e63' },
   { name: 'Tagihan', icon: 'receipt', color: '#f44336' },
   { name: 'Hiburan', icon: 'movie', color: '#9c27b0' },
-  { name: 'Gaji', icon: 'payments', color: '#4caf50' }
+  { name: 'Gaji', icon: 'payments', color: '#4caf50' },
 ];
+
+// ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useStore = create<AppState>((set, get) => ({
   transactions: [],
   budgets: [],
   categories: [],
   isLoading: true,
+  isLoadingMore: false,
+  hasMore: false,
+  nextCursor: null,
   error: null,
   user: null,
   lastFetchedAt: null,
 
   checkAuth: async () => {
-    // Simple auth check — AppInitializer's onAuthStateChange handles
-    // the full init sequence (fetchCategories, fetchData, migration)
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    set({ user });
+    set({ user: user as AppUser | null });
   },
 
+  // ── READ ──────────────────────────────────────────────────────────────────
+
   fetchData: async (force = false) => {
-    // Deduplicate: if a fetch is already in-flight, return the same promise
     if (fetchDataInFlight) return fetchDataInFlight;
 
-    // Skip if data was fetched recently (within 30 seconds) unless forced
     const { lastFetchedAt } = get();
-    if (!force && lastFetchedAt && Date.now() - lastFetchedAt < 30000) return;
+    if (!force && lastFetchedAt && Date.now() - lastFetchedAt < 30_000) return;
 
     fetchDataInFlight = (async () => {
       set({ isLoading: true, error: null });
       const { user } = get();
       try {
-      if (user) {
-        const [txRes, bdgRes] = await Promise.all([
-          fetch('/api/transactions'),
-          fetch('/api/budgets')
-        ]);
-        
-        const txData = await txRes.json();
-        const bdgData = await bdgRes.json();
+        if (user) {
+          const [txRes, bdgRes] = await Promise.all([
+            fetch('/api/transactions'), // First page (cursor=undefined)
+            fetch('/api/budgets'),
+          ]);
 
-        set({
-          transactions: Array.isArray(txData) ? txData : [],
-          budgets: Array.isArray(bdgData) ? bdgData : [],
-          isLoading: false,
-          lastFetchedAt: Date.now()
-        });
-      } else {
-        // Guest mode using Dexie
-        const txData = await db.transactions.orderBy('date').reverse().toArray();
-        // Since local dexie transaction has category_id but not the joined category object, we need to map it
-        const catData = await db.categories.toArray();
-        const catMap = new Map(catData.map(c => [c.id, c]));
-        
-        const txWithCategories = txData.map(tx => ({
-          ...tx,
-          category: catMap.get(tx.category_id) || null
-        }));
+          const txJson = await txRes.json();
+          const bdgData: Budget[] = await bdgRes.json();
 
-        const bdgData = await db.budgets.toArray();
+          // Handle both paginated { data, nextCursor, hasMore } and legacy flat array
+          const txData: Transaction[] = Array.isArray(txJson)
+            ? txJson
+            : (txJson.data ?? []);
+          const nextCursor: string | null = txJson.nextCursor ?? null;
+          const hasMore: boolean = txJson.hasMore ?? false;
 
-        set({ transactions: txWithCategories, budgets: bdgData, isLoading: false, lastFetchedAt: Date.now() });
-      }
+          set({
+            transactions: txData,
+            budgets: Array.isArray(bdgData) ? bdgData : [],
+            nextCursor,
+            hasMore,
+            isLoading: false,
+            lastFetchedAt: Date.now(),
+          });
+        } else {
+          // Guest mode — Dexie
+          const txData = await db.transactions.orderBy('date').reverse().toArray();
+          const catData = await db.categories.toArray();
+          const catMap = new Map(catData.map((c) => [c.id, c as Category]));
+
+          const txWithCategories: Transaction[] = txData.map((tx) => ({
+            ...tx,
+            category: catMap.get(tx.category_id) ?? null,
+          }));
+
+          const bdgData = await db.budgets.toArray();
+
+          set({
+            transactions: txWithCategories,
+            budgets: bdgData as Budget[],
+            hasMore: false,
+            nextCursor: null,
+            isLoading: false,
+            lastFetchedAt: Date.now(),
+          });
+        }
       } catch (error) {
-        console.error('Fetch Error:', error);
+        logger.error('Fetch Error:', error);
         set({ error: 'Gagal mengambil data', isLoading: false });
       } finally {
         fetchDataInFlight = null;
@@ -113,8 +147,29 @@ export const useStore = create<AppState>((set, get) => ({
     return fetchDataInFlight;
   },
 
+  loadMoreTransactions: async () => {
+    const { user, isLoadingMore, hasMore, nextCursor } = get();
+    if (!user || isLoadingMore || !hasMore || !nextCursor) return;
+
+    set({ isLoadingMore: true });
+    try {
+      const res = await fetch(`/api/transactions?cursor=${encodeURIComponent(nextCursor)}`);
+      const json = await res.json();
+      const newItems: Transaction[] = json.data ?? [];
+
+      set((state) => ({
+        transactions: [...state.transactions, ...newItems],
+        nextCursor: json.nextCursor ?? null,
+        hasMore: json.hasMore ?? false,
+        isLoadingMore: false,
+      }));
+    } catch (error) {
+      logger.error('Load More Error:', error);
+      set({ isLoadingMore: false });
+    }
+  },
+
   fetchCategories: async (force = false) => {
-    // Deduplicate concurrent calls
     if (fetchCatsInFlight) return fetchCatsInFlight;
 
     const { user, categories } = get();
@@ -122,29 +177,28 @@ export const useStore = create<AppState>((set, get) => ({
 
     fetchCatsInFlight = (async () => {
       try {
-      if (user) {
-        const res = await fetch('/api/categories');
-        const data = await res.json();
-        set({ categories: Array.isArray(data) ? data : [] });
-      } else {
-        let cats = await db.categories.toArray();
-        if (cats.length === 0) {
-          // Seed default categories
-          const seedData = DEFAULT_CATEGORIES.map(c => ({
-            id: generateId(),
-            user_id: null,
-            name: c.name,
-            icon: c.icon,
-            color: c.color,
-            is_default: true
-          }));
-          await db.categories.bulkAdd(seedData);
-          cats = await db.categories.toArray();
+        if (user) {
+          const res = await fetch('/api/categories');
+          const data: Category[] = await res.json();
+          set({ categories: Array.isArray(data) ? data : [] });
+        } else {
+          let cats = await db.categories.toArray();
+          if (cats.length === 0) {
+            const seedData = DEFAULT_CATEGORIES.map((c) => ({
+              id: generateId(),
+              user_id: null,
+              name: c.name,
+              icon: c.icon,
+              color: c.color,
+              is_default: true,
+            }));
+            await db.categories.bulkAdd(seedData);
+            cats = await db.categories.toArray();
+          }
+          set({ categories: cats as Category[] });
         }
-        set({ categories: cats });
-      }
       } catch (error) {
-        console.error('Fetch Categories Error:', error);
+        logger.error('Fetch Categories Error:', error);
       } finally {
         fetchCatsInFlight = null;
       }
@@ -153,79 +207,148 @@ export const useStore = create<AppState>((set, get) => ({
     return fetchCatsInFlight;
   },
 
-  addTransaction: async (data: any) => {
-    const { user, fetchData } = get();
-    try {
-      if (user) {
+  // ── TRANSACTIONS ──────────────────────────────────────────────────────────
+
+  addTransaction: async (data: TransactionInput) => {
+    const { user, categories } = get();
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+
+    if (user) {
+      // Optimistic update
+      const tempId = `temp_${Date.now()}`;
+      const optimisticTx: Transaction = {
+        id: tempId,
+        user_id: user.id,
+        amount: data.amount,
+        category_id: data.category_id,
+        category: catMap.get(data.category_id) ?? null,
+        note: data.note ?? '',
+        date: data.date,
+        created_at: new Date().toISOString(),
+      };
+      set((state) => ({
+        transactions: [optimisticTx, ...state.transactions],
+      }));
+
+      try {
         const res = await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Gagal menambah transaksi');
-      } else {
-        const newTx = {
-          id: generateId(),
-          user_id: null,
-          amount: data.amount,
-          category_id: data.category_id,
-          note: data.note || '',
-          date: data.date,
-          created_at: new Date().toISOString()
-        };
-        await db.transactions.add(newTx);
+        const saved: Transaction = await res.json();
+
+        // Replace optimistic item with real server data
+        set((state) => ({
+          transactions: state.transactions.map((tx) =>
+            tx.id === tempId ? saved : tx
+          ),
+          lastFetchedAt: Date.now(),
+        }));
+      } catch (error) {
+        // Rollback on failure
+        set((state) => ({
+          transactions: state.transactions.filter((tx) => tx.id !== tempId),
+        }));
+        logger.error('Add Transaction Error:', error);
+        throw error;
       }
-      await fetchData(true); // Force refresh after mutation
-    } catch (error) {
-      console.error('Add Transaction Error:', error);
-      throw error;
+    } else {
+      // Guest mode
+      const newTx = {
+        id: generateId(),
+        user_id: null,
+        amount: data.amount,
+        category_id: data.category_id,
+        note: data.note ?? '',
+        date: data.date,
+        created_at: new Date().toISOString(),
+      };
+      await db.transactions.add(newTx);
+      await get().fetchData(true);
     }
   },
 
   deleteTransaction: async (id: string) => {
-    const { user, fetchData } = get();
-    try {
-      if (user) {
+    const { user } = get();
+
+    if (user) {
+      // Optimistic update
+      const prev = get().transactions;
+      set((state) => ({
+        transactions: state.transactions.filter((tx) => tx.id !== id),
+      }));
+
+      try {
         const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Gagal menghapus transaksi');
-      } else {
-        await db.transactions.delete(id);
+      } catch (error) {
+        // Rollback
+        set({ transactions: prev });
+        logger.error('Delete Transaction Error:', error);
+        throw error;
       }
-      await fetchData(true);
-    } catch (error) {
-      console.error('Delete Transaction Error:', error);
-      throw error;
+    } else {
+      await db.transactions.delete(id);
+      await get().fetchData(true);
     }
   },
 
-  updateTransaction: async (id: string, data: any) => {
-    const { user, fetchData } = get();
-    try {
-      if (user) {
+  updateTransaction: async (id: string, data: Partial<TransactionInput>) => {
+    const { user, categories } = get();
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+
+    if (user) {
+      const prev = get().transactions;
+      // Optimistic update
+      set((state) => ({
+        transactions: state.transactions.map((tx) =>
+          tx.id === id
+            ? {
+                ...tx,
+                ...data,
+                category: data.category_id
+                  ? (catMap.get(data.category_id) ?? tx.category)
+                  : tx.category,
+              }
+            : tx
+        ),
+      }));
+
+      try {
         const res = await fetch(`/api/transactions/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Gagal update transaksi');
-      } else {
-        await db.transactions.update(id, data);
+        const saved: Transaction = await res.json();
+
+        // Replace with server truth
+        set((state) => ({
+          transactions: state.transactions.map((tx) =>
+            tx.id === id ? saved : tx
+          ),
+        }));
+      } catch (error) {
+        set({ transactions: prev });
+        logger.error('Update Transaction Error:', error);
+        throw error;
       }
-      await fetchData(true);
-    } catch (error) {
-      console.error('Update Transaction Error:', error);
-      throw error;
+    } else {
+      await db.transactions.update(id, data);
+      await get().fetchData(true);
     }
   },
 
-  setBudget: async (limitAmount: number, period = 'monthly') => {
-    const { user, budgets, fetchData } = get();
-    try {
-      // Upsert: update existing global budget for this period, or insert new
-      const existing = Array.isArray(budgets)
-        ? budgets.find((b: any) => b.period === period && !b.category_id)
-        : null;
+  // ── BUDGETS ───────────────────────────────────────────────────────────────
 
+  setBudget: async (limitAmount: number, period: BudgetPeriod = 'monthly') => {
+    const { user, budgets, fetchData } = get();
+    const existing = budgets.find((b) => b.period === period && !b.category_id);
+
+    try {
       if (user) {
         if (existing) {
           const res = await fetch('/api/budgets', {
@@ -251,13 +374,13 @@ export const useStore = create<AppState>((set, get) => ({
             user_id: null,
             category_id: null,
             limit_amount: limitAmount,
-            period: period
+            period,
           });
         }
       }
       await fetchData(true);
     } catch (error) {
-      console.error('Set Budget Error:', error);
+      logger.error('Set Budget Error:', error);
       throw error;
     }
   },
@@ -273,35 +396,36 @@ export const useStore = create<AppState>((set, get) => ({
       }
       await fetchData(true);
     } catch (error) {
-      console.error('Delete Budget Error:', error);
+      logger.error('Delete Budget Error:', error);
       throw error;
     }
   },
 
-  addCategory: async (data: any) => {
+  // ── CATEGORIES ────────────────────────────────────────────────────────────
+
+  addCategory: async (data: CategoryInput) => {
     const { user, fetchCategories } = get();
     try {
       if (user) {
         const res = await fetch('/api/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Gagal menambah kategori');
       } else {
-        const newCat = {
+        await db.categories.add({
           id: generateId(),
           user_id: null,
           name: data.name,
           icon: data.icon,
           color: data.color,
-          is_default: false
-        };
-        await db.categories.add(newCat);
+          is_default: false,
+        });
       }
       await fetchCategories(true);
     } catch (error) {
-      console.error('Add Category Error:', error);
+      logger.error('Add Category Error:', error);
       throw error;
     }
   },
@@ -317,19 +441,19 @@ export const useStore = create<AppState>((set, get) => ({
       }
       await fetchCategories(true);
     } catch (error) {
-      console.error('Delete Category Error:', error);
+      logger.error('Delete Category Error:', error);
       throw error;
     }
   },
 
-  updateCategory: async (id: string, data: any) => {
+  updateCategory: async (id: string, data: Partial<CategoryInput>) => {
     const { user, fetchCategories } = get();
     try {
       if (user) {
         const res = await fetch(`/api/categories/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         if (!res.ok) throw new Error('Gagal update kategori');
       } else {
@@ -337,10 +461,10 @@ export const useStore = create<AppState>((set, get) => ({
       }
       await fetchCategories(true);
     } catch (error) {
-      console.error('Update Category Error:', error);
+      logger.error('Update Category Error:', error);
       throw error;
     }
   },
 
-  setUser: (user) => set({ user })
+  setUser: (user) => set({ user }),
 }));

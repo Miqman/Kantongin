@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { z } from 'zod';
 
-export async function GET() {
+const transactionSchema = z.object({
+  amount: z.number().positive('amount harus > 0'),
+  category_id: z.string().uuid('category_id harus berupa UUID valid'),
+  note: z.string().max(255, 'note maksimal 255 karakter').optional().default(''),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date harus format YYYY-MM-DD'),
+});
+
+const PAGE_SIZE = 50;
+
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -10,23 +20,39 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: transactions, error: dbError } = await supabase
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get('cursor'); // ISO datetime string of last item's created_at
+
+    let query = supabase
       .from('transactions')
-      .select(`
-        *,
-        category:categories(*)
-      `)
+      .select(`*, category:categories(*)`)
       .eq('user_id', user.id)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(PAGE_SIZE);
+
+    // Cursor-based pagination: fetch items older than the cursor
+    if (cursor) {
+      query = query.lt('created_at', cursor);
+    }
+
+    const { data: transactions, error: dbError } = await query;
 
     if (dbError) {
-      console.error('GET Transactions Error:', dbError);
       return NextResponse.json({ error: 'Gagal mengambil transaksi' }, { status: 500 });
     }
 
-    return NextResponse.json(transactions ?? []);
-  } catch (error) {
-    console.error('GET Transactions Error:', error);
+    const items = transactions ?? [];
+    const nextCursor = items.length === PAGE_SIZE
+      ? items[items.length - 1].created_at
+      : null;
+
+    return NextResponse.json({
+      data: items,
+      nextCursor,
+      hasMore: nextCursor !== null,
+    });
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -41,31 +67,29 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
-    const { amount, category_id, note, date } = json;
+    const parsed = transactionSchema.safeParse(json);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validasi gagal', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { amount, category_id, note, date } = parsed.data;
 
     const { data: transaction, error: dbError } = await supabase
       .from('transactions')
-      .insert({
-        user_id: user.id,
-        amount,
-        category_id,
-        note: note ?? '',
-        date,
-      })
-      .select(`
-        *,
-        category:categories(*)
-      `)
+      .insert({ user_id: user.id, amount, category_id, note, date })
+      .select(`*, category:categories(*)`)
       .single();
 
     if (dbError) {
-      console.error('POST Transaction Error:', dbError);
       return NextResponse.json({ error: 'Gagal menambah transaksi' }, { status: 500 });
     }
 
     return NextResponse.json(transaction, { status: 201 });
-  } catch (error) {
-    console.error('POST Transaction Error:', error);
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

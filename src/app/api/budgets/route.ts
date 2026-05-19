@@ -1,5 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { z } from 'zod';
+
+const budgetSchema = z.object({
+  limit_amount: z.number().positive('limit_amount harus > 0'),
+  period: z.enum(['monthly', 'weekly']).optional().default('monthly'),
+  category_id: z.string().uuid().nullable().optional().default(null),
+});
+
+const budgetUpdateSchema = z.object({
+  id: z.string().uuid('id harus berupa UUID valid'),
+  limit_amount: z.number().positive('limit_amount harus > 0'),
+  period: z.enum(['monthly', 'weekly']).optional().default('monthly'),
+  category_id: z.string().uuid().nullable().optional().default(null),
+});
 
 export async function GET() {
   try {
@@ -16,13 +30,11 @@ export async function GET() {
       .eq('user_id', user.id);
 
     if (dbError) {
-      console.error('GET Budgets Error:', dbError);
       return NextResponse.json({ error: 'Gagal mengambil budget' }, { status: 500 });
     }
 
     return NextResponse.json(budgets ?? []);
-  } catch (error) {
-    console.error('GET Budgets Error:', error);
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -37,22 +49,29 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
-    const { category_id, limit_amount, period } = json;
+    const parsed = budgetSchema.safeParse(json);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validasi gagal', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { limit_amount, period, category_id } = parsed.data;
 
     const { data: budget, error: dbError } = await supabase
       .from('budgets')
-      .insert({ user_id: user.id, category_id: category_id ?? null, limit_amount, period: period ?? 'monthly' })
+      .insert({ user_id: user.id, category_id, limit_amount, period })
       .select(`*, category:categories(*)`)
       .single();
 
     if (dbError) {
-      console.error('POST Budget Error:', dbError);
       return NextResponse.json({ error: 'Gagal menambah budget' }, { status: 500 });
     }
 
     return NextResponse.json(budget, { status: 201 });
-  } catch (error) {
-    console.error('POST Budget Error:', error);
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -67,26 +86,31 @@ export async function PUT(request: Request) {
     }
 
     const json = await request.json();
-    const { id, limit_amount, category_id, period } = json;
+    const parsed = budgetUpdateSchema.safeParse(json);
 
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validasi gagal', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    const { id, limit_amount, category_id, period } = parsed.data;
 
     const { data: budget, error: dbError } = await supabase
       .from('budgets')
-      .update({ limit_amount, category_id: category_id ?? null, period: period ?? 'monthly' })
+      .update({ limit_amount, category_id, period })
       .eq('id', id)
       .eq('user_id', user.id)
       .select(`*, category:categories(*)`)
       .single();
 
     if (dbError) {
-      console.error('PUT Budget Error:', dbError);
       return NextResponse.json({ error: 'Gagal update budget' }, { status: 500 });
     }
 
     return NextResponse.json(budget);
-  } catch (error) {
-    console.error('PUT Budget Error:', error);
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -112,13 +136,11 @@ export async function DELETE(request: Request) {
       .eq('user_id', user.id);
 
     if (dbError) {
-      console.error('DELETE Budget Error:', dbError);
       return NextResponse.json({ error: 'Gagal hapus budget' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('DELETE Budget Error:', error);
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
