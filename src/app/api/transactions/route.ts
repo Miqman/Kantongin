@@ -22,6 +22,17 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get('cursor'); // ISO datetime string of last item's created_at
+    const startDate = searchParams.get('start_date'); // YYYY-MM-DD
+    const endDate = searchParams.get('end_date'); // YYYY-MM-DD
+    const limitParam = searchParams.get('limit');
+
+    let limit = PAGE_SIZE;
+    if (limitParam) {
+      const parsedLimit = parseInt(limitParam, 10);
+      if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        limit = parsedLimit;
+      }
+    }
 
     let query = supabase
       .from('transactions')
@@ -29,7 +40,15 @@ export async function GET(request: Request) {
       .eq('user_id', user.id)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(PAGE_SIZE);
+      .limit(limit);
+
+    // Date range filtering
+    if (startDate) {
+      query = query.gte('date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('date', endDate);
+    }
 
     // Cursor-based pagination: fetch items older than the cursor
     if (cursor) {
@@ -43,7 +62,7 @@ export async function GET(request: Request) {
     }
 
     const items = transactions ?? [];
-    const nextCursor = items.length === PAGE_SIZE
+    const nextCursor = items.length === limit
       ? items[items.length - 1].created_at
       : null;
 
