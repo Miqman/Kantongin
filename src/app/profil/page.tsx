@@ -18,10 +18,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 /* ── Mobile Calendar: nav arrows sit beside the month title ── */
-function MobileCalendar({ selected, onSelect }: {
+function MobileCalendar({ selected, onSelect, disabledBefore, disabledAfter }: {
   selected: Date | undefined;
   onSelect: (date: Date | undefined) => void;
+  disabledBefore?: Date;
+  disabledAfter?: Date;
 }) {
+  const disabled: import('react-day-picker').Matcher[] = [];
+  if (disabledBefore) disabled.push({ before: disabledBefore });
+  if (disabledAfter)  disabled.push({ after: disabledAfter });
+
   return (
     <DayPicker
       mode="single"
@@ -29,6 +35,8 @@ function MobileCalendar({ selected, onSelect }: {
       onSelect={onSelect}
       locale={id}
       showOutsideDays
+      disabled={disabled.length ? disabled : undefined}
+      defaultMonth={selected ?? (disabledBefore ?? disabledAfter)}
       className="w-full p-0"
       classNames={{
         months: "w-full",
@@ -545,7 +553,8 @@ export default function Profil() {
             </div>
 
             {dateRangeType === 'custom' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-fadeIn">
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-fadeIn">
                 {/* Tanggal Mulai */}
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1">
@@ -570,9 +579,14 @@ export default function Profil() {
                           onSelect={(selectedDate) => {
                             if (selectedDate) {
                               setCustomStartDate(format(selectedDate, "yyyy-MM-dd"));
+                              // jika start > end, reset end
+                              if (customEndDate && format(selectedDate, "yyyy-MM-dd") > customEndDate) {
+                                setCustomEndDate('');
+                              }
                               setOpenStart(false);
                             }
                           }}
+                          disabled={customEndDate ? { after: parseISO(customEndDate) } : undefined}
                           initialFocus
                           locale={id}
                         />
@@ -630,9 +644,14 @@ export default function Profil() {
                                 onSelect={(selectedDate) => {
                                   if (selectedDate) {
                                     setCustomStartDate(format(selectedDate, "yyyy-MM-dd"));
+                                    // jika start > end, reset end
+                                    if (customEndDate && format(selectedDate, "yyyy-MM-dd") > customEndDate) {
+                                      setCustomEndDate('');
+                                    }
                                     setOpenStart(false);
                                   }
                                 }}
+                                disabledAfter={customEndDate ? parseISO(customEndDate) : undefined}
                               />
                             </div>
                           </div>
@@ -670,6 +689,7 @@ export default function Profil() {
                               setOpenEnd(false);
                             }
                           }}
+                          disabled={customStartDate ? { before: parseISO(customStartDate) } : undefined}
                           initialFocus
                           locale={id}
                         />
@@ -730,6 +750,7 @@ export default function Profil() {
                                     setOpenEnd(false);
                                   }
                                 }}
+                                disabledBefore={customStartDate ? parseISO(customStartDate) : undefined}
                               />
                             </div>
                           </div>
@@ -740,6 +761,15 @@ export default function Profil() {
                   )}
                 </div>
               </div>
+
+              {/* Validation hint */}
+              {customStartDate && customEndDate && customStartDate > customEndDate && (
+                <p className="flex items-center gap-1.5 text-xs text-error mt-1 px-1 animate-fadeIn">
+                  <span className="material-symbols-outlined text-sm">error</span>
+                  Tanggal mulai tidak boleh lebih baru dari tanggal selesai.
+                </p>
+              )}
+              </>
             )}
           </div>
 
