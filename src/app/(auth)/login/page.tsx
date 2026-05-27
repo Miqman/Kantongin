@@ -17,6 +17,7 @@ function LoginForm() {
     searchParams.get('message')
   )
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Already logged in → go home
   useEffect(() => {
@@ -101,11 +102,20 @@ function LoginForm() {
               <span className="material-symbols-outlined text-on-surface-variant text-xl group-focus-within:text-primary transition-colors">lock</span>
               <input
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 className="bg-transparent border-none focus:ring-0 p-0 text-sm w-full outline-none text-on-surface placeholder:text-on-surface-variant/30 font-medium"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface transition-colors focus:outline-none cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">
+                  {showPassword ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
             </div>
           </div>
 

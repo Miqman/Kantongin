@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const transactionSchema = z.object({
-  amount: z.number().positive('amount harus > 0'),
+  amount: z.number().refine((val) => val !== 0, 'amount tidak boleh 0'),
   category_id: z.string().uuid('category_id harus berupa UUID valid'),
   note: z.string().max(255, 'note maksimal 255 karakter').optional().default(''),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date harus format YYYY-MM-DD'),
