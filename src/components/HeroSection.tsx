@@ -13,26 +13,30 @@ export default function HeroSection() {
 
   useEffect(() => {
     if (!loading) {
-      // 1. Current Balance (Cumulative net worth)
-      const totalNetExps = txData.reduce((sum, t) => sum + Number(t.amount), 0);
-      const currentBalance = -totalNetExps;
-      setTotalDana(currentBalance);
-
-      // 2. Initial Balance of the Month (Balance before 1st of this month)
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      const prevBalanceExps = txData
-        .filter(t => new Date(t.date) < firstDayOfMonth)
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      const prevBalance = -prevBalanceExps;
 
-      // 3. Growth Calculation
+      const totalIncome = txData
+        .filter(t => Number(t.amount) < 0)
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+      const totalExpense = txData
+        .filter(t => Number(t.amount) > 0)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      const currentBalance = totalIncome - totalExpense;
+      setTotalDana(currentBalance);
+
+      const prevIncome = txData
+        .filter(t => new Date(t.date) < firstDayOfMonth && Number(t.amount) < 0)
+        .reduce((sum, t) => sum + Math.abs(Number(t.amount)), 0);
+      const prevExpense = txData
+        .filter(t => new Date(t.date) < firstDayOfMonth && Number(t.amount) > 0)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
+      const prevBalance = prevIncome - prevExpense;
+
       if (prevBalance !== 0) {
         const pct = ((currentBalance - prevBalance) / Math.abs(prevBalance)) * 100;
         setGrowth(pct);
       } else if (currentBalance !== 0 && prevBalance === 0) {
-        // If it's a brand new account, growth is 100% from 0
         setGrowth(100);
       } else {
         setGrowth(0);
