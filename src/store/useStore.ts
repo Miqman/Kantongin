@@ -157,12 +157,16 @@ export const useStore = create<AppState>((set, get) => ({
       const json = await res.json();
       const newItems: Transaction[] = json.data ?? [];
 
-      set((state) => ({
-        transactions: [...state.transactions, ...newItems],
-        nextCursor: json.nextCursor ?? null,
-        hasMore: json.hasMore ?? false,
-        isLoadingMore: false,
-      }));
+      set((state) => {
+        const existingIds = new Set(state.transactions.map((tx) => tx.id));
+        const dedupedNewItems = newItems.filter((tx) => !existingIds.has(tx.id));
+        return {
+          transactions: [...state.transactions, ...dedupedNewItems],
+          nextCursor: json.nextCursor ?? null,
+          hasMore: json.hasMore ?? false,
+          isLoadingMore: false,
+        };
+      });
     } catch (error) {
       logger.error('Load More Error:', error);
       set({ isLoadingMore: false });
