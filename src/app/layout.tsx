@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import AppInitializer from '@/components/AppInitializer';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({
@@ -54,11 +55,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.documentElement.classList.add('dark');
-                } else {
-                  document.documentElement.classList.remove('dark');
-                }
+                var t = localStorage.getItem('theme') || 'slate-dark';
+                var el = document.documentElement;
+                var toRemove = Array.from(el.classList).filter(function(c){ return c === 'dark' || c.indexOf('theme-') === 0; });
+                toRemove.forEach(function(c){ el.classList.remove(c); });
+                if (t === 'slate-dark') { el.classList.add('dark'); }
+                else if (t !== 'slate-light') { el.classList.add('theme-' + t); }
               } catch (_) {}
             `,
           }}
@@ -71,6 +73,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${manrope.variable} font-body bg-surface text-on-surface antialiased min-h-screen pb-32`}
       >
+        <ThemeProvider>
         <AppInitializer />
         <Toaster
           position="top-center"
@@ -86,6 +89,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        </ThemeProvider>
       </body>
     </html>
   );

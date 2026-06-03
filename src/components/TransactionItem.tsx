@@ -27,7 +27,17 @@ export default function TransactionItem({
   onDelete,
   onEdit,
 }: TransactionItemProps) {
-  const amountColorClass = isIncome ? "text-secondary" : "text-tertiary-fixed-dim";
+  /**
+   * Use inline CSS vars instead of Tailwind classes so the color always
+   * maps to the active theme's vivid tokens, regardless of which theme is selected.
+   * - Income  → --app-secondary  (vibrant green/teal/gold per theme)
+   * - Expense → --app-tertiary   (vibrant red/rose/warm per theme)
+   * Both are guaranteed to have good contrast against --app-surface-container-lowest.
+   */
+  const amountStyle: React.CSSProperties = isIncome
+    ? { color: 'var(--app-secondary)' }
+    : { color: 'var(--app-tertiary)' };
+
   const controls = useAnimation();
   const swipeThreshold = 75;
 
@@ -86,7 +96,7 @@ export default function TransactionItem({
             </div>
           </div>
           <div className="text-right whitespace-nowrap">
-            <p className={`font-bold text-sm ${amountColorClass}`}>{amount}</p>
+            <p className="font-bold text-sm" style={amountStyle}>{amount}</p>
             <p className="text-[10px] text-on-surface-variant/50 font-medium">{date}</p>
           </div>
         </motion.div>

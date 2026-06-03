@@ -8,6 +8,7 @@ import BottomNavBar from '@/components/BottomNavBar';
 import GoogleSheetsCard from '@/components/GoogleSheetsCard';
 import BudgetCard from '@/components/BudgetCard';
 import { useStore } from '@/store/useStore';
+import ThemePicker from '@/components/ThemePicker';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
@@ -74,37 +75,9 @@ function getInitials(email: string): string {
 export default function Profil() {
   const router = useRouter();
   const { user, transactions } = useStore();
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
-
-  // Load theme preference on mount
-  useEffect(() => {
-    const isDark =
-      document.documentElement.classList.contains('dark') ||
-      localStorage.getItem('theme') === 'dark' ||
-      !localStorage.getItem('theme');
-    setIsDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  const toggleTheme = () => {
-    const html = document.documentElement;
-    if (isDarkMode) {
-      html.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDarkMode(false);
-    } else {
-      html.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDarkMode(true);
-    }
-  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -476,28 +449,9 @@ export default function Profil() {
             Preferensi
           </h2>
           <div className="bg-surface-container-low rounded-[1.5rem] overflow-hidden">
-            {/* Theme Toggle */}
-            <div
-              onClick={toggleTheme}
-              className="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group"
-            >
-              <div className="flex items-center gap-4">
-                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
-                  {isDarkMode ? 'dark_mode' : 'light_mode'}
-                </span>
-                <span className="font-medium">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
-              </div>
-              <div
-                className={`w-12 h-6 rounded-full relative flex items-center px-1 transition-colors duration-300 ${
-                  isDarkMode ? 'bg-primary' : 'bg-outline-variant'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full transition-transform duration-300 ${
-                    isDarkMode ? 'translate-x-6 bg-on-primary' : 'translate-x-0 bg-surface'
-                  }`}
-                />
-              </div>
+            {/* Theme Picker */}
+            <div className="p-5">
+              <ThemePicker />
             </div>
 
             <Link href="/profil/categories" className="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group border-b border-outline-variant/5">
