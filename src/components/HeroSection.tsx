@@ -99,8 +99,8 @@ export default function HeroSection() {
       {/* Bento Grid: Summary Cards */}
       <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {/* Total Hari Ini */}
-        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-low flex flex-col justify-between aspect-square md:aspect-auto border border-outline-variant/5">
-          <span className="material-symbols-outlined text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
+        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-low flex flex-col justify-between border border-outline-variant/5">
+          <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
           <div className="mt-4">
             <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Total Hari Ini</p>
             {loading ? (
@@ -112,7 +112,7 @@ export default function HeroSection() {
         </div>
         
         {/* Total Bulan Ini */}
-        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-high flex flex-col justify-between aspect-square md:aspect-auto border border-outline-variant/10">
+        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-high flex flex-col justify-between border border-outline-variant/10">
           <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
           <div className="mt-4">
             <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Total Bulan Ini</p>
@@ -126,14 +126,25 @@ export default function HeroSection() {
         
         {/* Sisa Budget — only shown when a budget is set */}
         {sisaBudget !== 0 || (Array.isArray(bdgData) && bdgData.length > 0) ? (
-          <div className="col-span-2 md:col-span-1 p-5 rounded-[1.5rem] bg-gradient-to-br from-primary to-primary-container text-on-primary-container flex flex-col justify-between aspect-auto shadow-lg">
-            <span className="material-symbols-outlined text-on-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>analytics</span>
+          <div className={`col-span-2 md:col-span-1 p-5 rounded-[1.5rem] flex flex-col justify-between aspect-auto border transition-all duration-300 ${
+            sisaBudget < 0
+              ? 'bg-error/8 border-error/25'
+              : 'bg-surface-container-low border-outline-variant/5'
+          }`}>
+            <span
+              className={`material-symbols-outlined ${sisaBudget < 0 ? 'text-error' : 'text-primary'}`}
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              {sisaBudget < 0 ? 'warning' : 'analytics'}
+            </span>
             <div className="mt-4">
-              <p className="font-label text-[10px] font-bold text-on-primary-container/70 tracking-wider">Sisa Budget</p>
+              <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Sisa Budget</p>
               {loading ? (
-                <div className="h-6 w-24 bg-primary-fixed/20 animate-pulse rounded mt-1"></div>
+                <div className="h-6 w-24 bg-surface-container-highest animate-pulse rounded mt-1" />
               ) : (
-                <p className={`font-headline text-lg font-extrabold ${sisaBudget < 0 ? 'text-error' : ''}`}>
+                <p className={`font-headline text-lg font-extrabold ${
+                  sisaBudget < 0 ? 'text-error' : 'text-on-surface'
+                }`}>
                   Rp {formatCurrency(sisaBudget)}
                 </p>
               )}
