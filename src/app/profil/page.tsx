@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TopAppBar from '@/components/TopAppBar';
@@ -9,6 +10,7 @@ import GoogleSheetsCard from '@/components/GoogleSheetsCard';
 import BudgetCard from '@/components/BudgetCard';
 import { useStore } from '@/store/useStore';
 import ThemePicker from '@/components/ThemePicker';
+import EditProfileModal from '@/components/EditProfileModal';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
@@ -78,6 +80,10 @@ export default function Profil() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAvatarLightboxOpen, setIsAvatarLightboxOpen] = useState(false);
+
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -359,20 +365,38 @@ export default function Profil() {
         <section className="flex flex-col items-center text-center space-y-4">
           <div className="relative">
             <div className="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary">
-              <div className="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => avatarUrl && setIsAvatarLightboxOpen(true)}
+                className={`w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center relative ${avatarUrl ? 'cursor-zoom-in' : 'cursor-default'}`}
+                title={avatarUrl ? 'Lihat foto profil' : undefined}
+              >
                 {user ? (
-                  <span className="text-on-surface font-extrabold text-4xl select-none">
-                    {getInitials(user.email ?? 'U')}
-                  </span>
+                  avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt="Foto profil"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <span className="text-on-surface font-extrabold text-4xl select-none">
+                      {getInitials(user.email ?? 'U')}
+                    </span>
+                  )
                 ) : (
                   <span className="material-symbols-outlined text-on-surface-variant text-5xl">
                     person
                   </span>
                 )}
-              </div>
+              </button>
             </div>
             {user && (
-              <button className="absolute bottom-0 right-0 bg-primary text-on-primary p-1.5 rounded-full shadow-lg">
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="absolute bottom-0 right-0 bg-primary text-on-primary p-1.5 rounded-full shadow-lg hover:scale-110 transition-transform cursor-pointer"
+              >
                 <span className="material-symbols-outlined text-sm">edit</span>
               </button>
             )}
@@ -775,6 +799,41 @@ export default function Profil() {
         </footer>
       </main>
       <BottomNavBar />
+
+      {/* ── Edit Profile Modal ── */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+      />
+
+      {/* ── Avatar Lightbox (profile page) ── */}
+      {isAvatarLightboxOpen && avatarUrl && typeof window !== 'undefined' && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-md z-[10000] flex items-center justify-center animate-fade-in"
+          onClick={() => setIsAvatarLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+            onClick={() => setIsAvatarLightboxOpen(false)}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+          <div
+            className="relative w-72 h-72 sm:w-96 sm:h-96 rounded-full overflow-hidden shadow-2xl ring-4 ring-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={avatarUrl}
+              alt="Foto profil besar"
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

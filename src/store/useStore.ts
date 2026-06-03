@@ -42,6 +42,7 @@ interface AppState {
   addCategory: (data: CategoryInput) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   updateCategory: (id: string, data: Partial<CategoryInput>) => Promise<void>;
+  updateProfile: (data: { full_name?: string; avatar_url?: string }) => Promise<void>;
   setUser: (user: AppUser | null) => void;
 }
 
@@ -471,4 +472,45 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setUser: (user) => set({ user }),
+
+  updateProfile: async (data) => {
+    const { user } = get();
+    if (!user) return;
+
+    // Optimistic update
+    const prevUser = user;
+    set({
+      user: {
+        ...user,
+        user_metadata: {
+          ...user.user_metadata,
+          ...data,
+        },
+      },
+    });
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error('Gagal update profil');
+      const json = await res.json();
+      // Sync with server truth
+      if (json.user?.user_metadata) {
+        set({
+          user: {
+            ...user,
+            user_metadata: json.user.user_metadata,
+          },
+        });
+      }
+    } catch (error) {
+      // Rollback on failure
+      set({ user: prevUser });
+      logger.error('Update Profile Error:', error);
+      throw error;
+    }
+  },
 }));
