@@ -58,15 +58,30 @@ function ThemeCard({
       `}
       aria-label={`Tema ${theme.name}${!theme.unlocked ? ' (terkunci)' : ''}`}
       aria-pressed={isActive}
+      title={theme.name}
     >
       {/* Preview */}
       <ThemePreview colors={theme.preview} mode={theme.mode} />
 
       {/* Name row */}
       <div className="flex items-center justify-between gap-1 px-0.5">
-        <span className="text-[11px] font-semibold text-on-surface leading-tight truncate">
-          {theme.name}
-        </span>
+        {/* Tooltip wrapper — hover on desktop, focus-visible on keyboard/touch */}
+        <div className="relative group/name min-w-0 flex-1">
+          <span className="text-[11px] font-semibold text-on-surface leading-tight line-clamp-2">
+            {theme.name}
+          </span>
+          {/* Floating tooltip */}
+          <div
+            className="pointer-events-none absolute z-50 bottom-[calc(100%+5px)] left-1/2 -translate-x-1/2 opacity-0 group-hover/name:opacity-100 group-focus-within/name:opacity-100 transition-opacity duration-150"
+            aria-hidden
+          >
+            <div className="px-2.5 py-1 bg-surface-container-highest border border-outline-variant/20 text-on-surface text-[10px] font-semibold rounded-lg shadow-lg whitespace-nowrap">
+              {theme.name}
+            </div>
+            {/* Caret arrow */}
+            <div className="w-2 h-2 bg-surface-container-highest border-b border-r border-outline-variant/20 rotate-45 mx-auto -mt-[5px]" />
+          </div>
+        </div>
 
         {/* Status icons */}
         <div className="flex items-center gap-1 flex-shrink-0">

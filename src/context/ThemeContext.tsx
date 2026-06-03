@@ -190,11 +190,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       })
       .then((data) => {
         if (data?.allowed_themes && Array.isArray(data.allowed_themes)) {
-          setAllowedExclusiveIds(data.allowed_themes);
+          const ids: string[] = data.allowed_themes;
+          setAllowedExclusiveIds(ids);
+
+          // ── Auto-switch: jika tema aktif eksklusif & akses dicabut ──
+          const activeId = (localStorage.getItem('theme') as ThemeId | null) ?? 'slate-dark';
+          const activeMeta = ALL_THEMES.find((t) => t.id === activeId);
+          if (activeMeta?.isExclusive && !ids.includes(activeId)) {
+            // Fallback ke slate-dark (tema default pertama)
+            applyThemeClass('slate-dark');
+            localStorage.setItem('theme', 'slate-dark');
+            setCurrentTheme('slate-dark');
+          }
         }
       })
       .catch(() => {
-        // Guest or network error — no exclusive themes
+        // Guest atau network error — tidak ada tema eksklusif
       });
   }, []);
 
