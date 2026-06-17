@@ -4,6 +4,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Satu baris item belanja dari struk (diekstrak oleh AI).
+ */
+export interface ParsedItem {
+  /** Nama barang/produk */
+  name: string;
+  /** Harga satuan atau subtotal item dalam IDR */
+  amount: number;
+  /** Hint kategori dari AI untuk item ini */
+  category_hint: string | null;
+}
+
+/**
  * Hasil parsing transaksi dari AI.
  * Field bisa null jika AI tidak berhasil mengekstrak nilainya.
  */
@@ -20,6 +32,12 @@ export interface ParsedTransaction {
   confidence: 'high' | 'medium' | 'low';
   /** Tipe transaksi yang terdeteksi */
   transaction_type: 'expense' | 'income' | null;
+  /**
+   * Daftar item belanja individual (opsional — hanya tersedia dari scan foto struk).
+   * Maks 50 item. Field ini opsional agar provider lain yang belum implementasi
+   * tidak terpengaruh.
+   */
+  items?: ParsedItem[];
 }
 
 /**

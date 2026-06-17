@@ -35,6 +35,7 @@ interface AppState {
   addTransaction: (data: TransactionInput) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateTransaction: (id: string, data: Partial<TransactionInput>) => Promise<void>;
+  addTransactionsBulk: (data: TransactionInput[]) => Promise<void>;
 
   setBudget: (limitAmount: number, period?: BudgetPeriod) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
@@ -271,6 +272,71 @@ export const useStore = create<AppState>((set, get) => ({
         created_at: new Date().toISOString(),
       };
       await db.transactions.add(newTx);
+      await get().fetchData(true);
+    }
+  },
+
+  addTransactionsBulk: async (data: TransactionInput[]) => {
+    if (data.length === 0) return;
+    const { user, categories } = get();
+    const catMap = new Map(categories.map((c) => [c.id, c]));
+
+    if (user) {
+      // Optimistic update — add all with temp IDs
+      const now = Date.now();
+      const tempTxs: import('@/types').Transaction[] = data.map((item, idx) => ({
+        id: `temp_bulk_${now}_${idx}`,
+        user_id: user.id,
+        amount: item.amount,
+        category_id: item.category_id,
+        category: catMap.get(item.category_id) ?? null,
+        note: item.note ?? '',
+        date: item.date,
+        created_at: new Date().toISOString(),
+      }));
+      const tempIds = tempTxs.map((tx) => tx.id);
+
+      set((state) => ({
+        transactions: [...tempTxs, ...state.transactions],
+      }));
+
+      try {
+        const res = await fetch('/api/transactions/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transactions: data }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error ?? 'Gagal menyimpan transaksi bulk');
+        }
+        // Batch endpoint hanya mengembalikan { count }, jadi kita refresh data
+        set((state) => ({
+          transactions: state.transactions.filter((tx) => !tempIds.includes(tx.id)),
+          lastFetchedAt: 0, // force refresh on next fetchData
+        }));
+        await get().fetchData(true);
+      } catch (error) {
+        // Rollback optimistic update
+        set((state) => ({
+          transactions: state.transactions.filter((tx) => !tempIds.includes(tx.id)),
+        }));
+        logger.error('Add Transactions Bulk Error:', error);
+        throw error;
+      }
+    } else {
+      // Guest mode — Dexie bulkAdd
+      const now = new Date().toISOString();
+      const newTxs = data.map((item) => ({
+        id: generateId(),
+        user_id: null as null,
+        amount: item.amount,
+        category_id: item.category_id,
+        note: item.note ?? '',
+        date: item.date,
+        created_at: now,
+      }));
+      await db.transactions.bulkAdd(newTxs);
       await get().fetchData(true);
     }
   },

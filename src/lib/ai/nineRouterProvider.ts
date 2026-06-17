@@ -29,6 +29,9 @@ Rules:
 - "note": merchant name or brief description (max 50 chars).
 - "date": extract transaction date from receipt if visible (format YYYY-MM-DD). Use null if not visible.
 - "confidence": "high" if total is clearly readable, "medium" if partially readable, "low" if unclear.
+- "items": extract each individual product/service line item visible on the receipt. Max 50 items. For each item, pick the most relevant category_hint from the provided list. If no individual items are visible, return an empty array [].
+- TAX RULE (IMPORTANT): If the receipt contains any tax or service charge line — including labels like "PPN", "PPN 11%", "Tax", "VAT", "Pajak", "PB1", "Service", "Service Charge", "Servis", or any percentage-based surcharge — you MUST include it as a SEPARATE item in the "items" array. Use the same category_hint as the overall transaction. Do NOT skip it.
+- Do NOT include the final total/grand total row as an item in "items". Only individual product lines, service lines, and tax/surcharge lines.
 
 Always return valid JSON only. No markdown, no explanation.`;
 
@@ -59,7 +62,10 @@ Return JSON:
   "category_hint": <string or null>,
   "note": <string or null>,
   "date": <"YYYY-MM-DD" or null>,
-  "confidence": <"high" | "medium" | "low">
+  "confidence": <"high" | "medium" | "low">,
+  "items": [
+    { "name": <string>, "amount": <number>, "category_hint": <string or null> }
+  ]
 }`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +90,26 @@ function parseAIResponse(raw: string): ParsedTransaction {
     throw new Error(`AI response is not valid JSON: ${e instanceof Error ? e.message : String(e)}`);
   }
 
+  // Safely parse items array (only for photo receipts; voice won't have this)
+  let items: ParsedTransaction['items'];
+  if (Array.isArray(parsed.items)) {
+    items = (parsed.items as unknown[])
+      .filter(
+        (item): item is { name: string; amount: number; category_hint: unknown } =>
+          typeof (item as Record<string, unknown>)?.name === 'string' &&
+          typeof (item as Record<string, unknown>)?.amount === 'number' &&
+          (item as Record<string, unknown>)?.amount > 0
+      )
+      .slice(0, 50) // max 50 items
+      .map((item) => ({
+        name: (item.name as string).slice(0, 100), // cap name length
+        amount: item.amount as number,
+        category_hint: typeof item.category_hint === 'string' ? item.category_hint : null,
+      }));
+    // Discard empty items array
+    if (items.length === 0) items = undefined;
+  }
+
   return {
     amount: typeof parsed.amount === 'number' ? parsed.amount : null,
     category_hint: typeof parsed.category_hint === 'string' ? parsed.category_hint : null,
@@ -95,6 +121,7 @@ function parseAIResponse(raw: string): ParsedTransaction {
     transaction_type: ['expense', 'income'].includes(parsed.transaction_type as string)
       ? (parsed.transaction_type as ParsedTransaction['transaction_type'])
       : null,
+    items,
   };
 }
 
@@ -185,7 +212,7 @@ export class NineRouterProvider implements AIProvider {
           model: this.model,
           messages,
           temperature: 0.1,
-          max_tokens: 1024,
+          max_tokens: timeoutMs > 30_000 ? 2048 : 1024, // 2048 for photo (more items), 1024 for voice
           stream: false,
           // Note: response_format not used — not all combo models support it.
           // JSON output is enforced via system prompt instructions instead.
@@ -245,25 +272,29 @@ export class NineRouterProvider implements AIProvider {
     mimeType: string,
     categoryNames: string[]
   ): Promise<ParsedTransaction> {
-    const raw = await this.callChat([
-      { role: 'system', content: SYSTEM_PROMPT_PHOTO },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: `data:${mimeType};base64,${base64Image}`,
-              detail: 'high',
+    // Use a longer timeout (45s) and higher max_tokens (2048) for photo — more content to parse
+    const raw = await this.callChat(
+      [
+        { role: 'system', content: SYSTEM_PROMPT_PHOTO },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`,
+                detail: 'high',
+              },
             },
-          },
-          {
-            type: 'text',
-            text: USER_PROMPT_PHOTO(categoryNames),
-          },
-        ],
-      },
-    ]);
+            {
+              type: 'text',
+              text: USER_PROMPT_PHOTO(categoryNames),
+            },
+          ],
+        },
+      ],
+      45_000 // 45s timeout for photo — triggers 2048 max_tokens via timeoutMs check
+    );
 
     return parseAIResponse(raw);
   }
