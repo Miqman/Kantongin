@@ -2,6 +2,9 @@
 // Domain types — single source of truth untuk seluruh aplikasi
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Re-export AI types for convenience
+export type { ParsedTransaction, HealthCheckResult } from '@/lib/ai/types';
+
 export type BudgetPeriod = 'monthly' | 'weekly';
 
 export interface Category {

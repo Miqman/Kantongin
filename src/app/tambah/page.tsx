@@ -1,11 +1,13 @@
 "use client";
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
+import VoiceInputButton from '@/components/VoiceInputButton';
+import PhotoInputButton from '@/components/PhotoInputButton';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -30,6 +32,22 @@ function TambahTransaksiContent() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+
+  // ── Pre-fill from AI modal ────────────────────────────────────────────────
+  const handleAIPrefill = useCallback((data: {
+    amount: string;
+    categoryId: string;
+    note: string;
+    date: string;
+    transactionType: 'expense' | 'income';
+  }) => {
+    if (data.amount) setAmount(data.amount);
+    if (data.categoryId) setSelectedCategoryId(data.categoryId);
+    if (data.note) setNote(data.note);
+    if (data.date) setDate(data.date);
+    setTransactionType(data.transactionType);
+    toast.success('Form diisi otomatis oleh AI ✨', { duration: 2000 });
+  }, []);
 
   useEffect(() => {
     if (categories.length > 0 && !selectedCategoryId && !editId) {
@@ -114,7 +132,7 @@ function TambahTransaksiContent() {
           <label className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/70 mb-3 block font-semibold">
             {transactionType === 'expense' ? 'Jumlah Pengeluaran' : 'Jumlah Pemasukan'}
           </label>
-          <div className="relative inline-flex items-baseline bg-surface-container-low/50 px-6 py-4 rounded-3xl">
+          <div className="relative inline-flex items-baseline bg-surface-container-low/50 px-6 py-4 rounded-3xl mb-4">
             <span className={`font-headline text-2xl font-extrabold mr-2 ${transactionType === 'expense' ? 'text-primary' : 'text-secondary'}`}>Rp</span>
             <input
               autoFocus
@@ -126,6 +144,12 @@ function TambahTransaksiContent() {
               placeholder="0"
             />
             <div className={`absolute bottom-3 left-6 right-6 h-0.5 rounded-full ${transactionType === 'expense' ? 'bg-primary/30' : 'bg-secondary/30'}`}></div>
+          </div>
+
+          {/* AI Quick Input pills below amount */}
+          <div className="flex justify-center items-center gap-3 mt-2">
+            <VoiceInputButton compact={true} onPrefillForm={handleAIPrefill} />
+            <PhotoInputButton compact={true} onPrefillForm={handleAIPrefill} />
           </div>
         </section>
 

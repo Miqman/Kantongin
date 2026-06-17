@@ -909,3 +909,9 @@
     background-size: 110px 72px;
   }
 }
+
+/* ── Custom animations ── */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
