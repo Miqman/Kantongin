@@ -9,7 +9,7 @@ const MAX_ITEMS = 50;
 
 const transactionItemSchema = z.object({
   amount: z
-    .number({ required_error: 'amount wajib diisi' })
+    .number()
     .refine((val) => val !== 0, 'amount tidak boleh 0'),
   category_id: z.string().uuid('category_id harus berupa UUID valid'),
   note: z.string().max(255, 'note maksimal 255 karakter').optional().default(''),

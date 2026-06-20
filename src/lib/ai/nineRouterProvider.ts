@@ -98,7 +98,7 @@ function parseAIResponse(raw: string): ParsedTransaction {
         (item): item is { name: string; amount: number; category_hint: unknown } =>
           typeof (item as Record<string, unknown>)?.name === 'string' &&
           typeof (item as Record<string, unknown>)?.amount === 'number' &&
-          (item as Record<string, unknown>)?.amount > 0
+          ((item as Record<string, unknown>)?.amount as number) > 0
       )
       .slice(0, 50) // max 50 items
       .map((item) => ({
