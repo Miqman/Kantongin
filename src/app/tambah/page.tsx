@@ -8,6 +8,8 @@ import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import VoiceInputButton from '@/components/VoiceInputButton';
 import PhotoInputButton from '@/components/PhotoInputButton';
+import ConfirmDialog from '@/components/ConfirmDialog';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,7 +22,7 @@ function TambahTransaksiContent() {
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
 
-  const { categories, addTransaction, updateTransaction, transactions } = useStore();
+  const { categories, addTransaction, updateTransaction, transactions, user } = useStore();
 
   // Functional States
   const [transactionType, setTransactionType] = useState<'expense' | 'income'>('expense');
@@ -32,6 +34,16 @@ function TambahTransaksiContent() {
   // UI States
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+
+  // Guard: fitur AI hanya untuk user yang sudah login
+  const handleAIClick = (cb: () => void) => {
+    if (!user) {
+      setShowLoginDialog(true);
+      return;
+    }
+    cb();
+  };
 
   // ── Pre-fill from AI modal ────────────────────────────────────────────────
   const handleAIPrefill = useCallback((data: {
@@ -148,9 +160,43 @@ function TambahTransaksiContent() {
 
           {/* AI Quick Input pills below amount */}
           <div className="flex justify-center items-center gap-3 mt-2">
-            <VoiceInputButton compact={true} onPrefillForm={handleAIPrefill} />
-            <PhotoInputButton compact={true} onPrefillForm={handleAIPrefill} />
+            {user ? (
+              // User login: komponen asli
+              <>
+                <VoiceInputButton compact={true} onPrefillForm={handleAIPrefill} />
+                <PhotoInputButton compact={true} onPrefillForm={handleAIPrefill} />
+              </>
+            ) : (
+              // Guest: dummy button yang tampilannya sama, klik → dialog login
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginDialog(true)}
+                  className="relative flex items-center gap-2 px-5 py-2.5 rounded-full border
+                    bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 hover:border-primary/40
+                    transition-all duration-200 cursor-pointer active:scale-95"
+                  aria-label="Input suara — login diperlukan"
+                >
+                  <span className="material-symbols-outlined text-base">mic</span>
+                  <span className="text-xs font-bold tracking-wide">Input Suara</span>
+                  <span className="material-symbols-outlined text-[14px]! opacity-60 ml-0.5">lock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginDialog(true)}
+                  className="relative flex items-center gap-2 px-5 py-2.5 rounded-full border
+                    bg-secondary/10 text-secondary border-secondary/20 hover:bg-secondary/20 hover:border-secondary/40
+                    transition-all duration-200 cursor-pointer active:scale-95"
+                  aria-label="Input foto — login diperlukan"
+                >
+                  <span className="material-symbols-outlined text-base">photo_camera</span>
+                  <span className="text-xs font-bold tracking-wide">Input Foto</span>
+                  <span className="material-symbols-outlined text-[14px]! opacity-60 ml-0.5">lock</span>
+                </button>
+              </>
+            )}
           </div>
+
         </section>
 
         {/* Dynamic Category Bento Grid */}
@@ -251,20 +297,78 @@ function TambahTransaksiContent() {
           <button
             disabled={loading}
             onClick={handleSave}
-            className={`w-full py-5 rounded-full font-headline font-bold text-lg shadow-xl active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-wait cursor-pointer ${
-              transactionType === 'expense' 
-                ? 'bg-primary text-on-primary shadow-primary/25 hover:shadow-primary/40' 
-                : 'bg-secondary text-on-secondary shadow-secondary/25 hover:shadow-secondary/40'
-            }`}
+            className={`w-full py-5 rounded-full font-headline font-bold text-lg shadow-xl active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-wait cursor-pointer ${transactionType === 'expense'
+              ? 'bg-primary text-on-primary shadow-primary/25 hover:shadow-primary/40'
+              : 'bg-secondary text-on-secondary shadow-secondary/25 hover:shadow-secondary/40'
+              }`}
           >
             {loading ? 'Menyimpan...' : 'Simpan Transaksi'}
           </button>
         </div>
       </main>
       <BottomNavBar />
+
+      {/* Dialog: Login diperlukan untuk fitur AI */}
+      {showLoginDialog && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+            onClick={() => setShowLoginDialog(false)}
+          />
+          {/* Bottom sheet */}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-dialog-title"
+            className={[
+              'fixed z-[9999] bg-surface rounded-t-3xl shadow-2xl',
+              'bottom-0 left-0 right-0',
+              'sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2',
+              'sm:w-full sm:max-w-sm sm:rounded-3xl',
+            ].join(' ')}
+          >
+            {/* Handle (mobile only) */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 rounded-full bg-outline-variant/40" />
+            </div>
+
+            {/* Content */}
+            <div className="px-6 pt-6 pb-2 flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-primary/10 text-primary">
+                <span className="material-symbols-outlined text-3xl">lock</span>
+              </div>
+              <div>
+                <h2
+                  id="login-dialog-title"
+                  className="font-headline font-bold text-lg text-on-surface"
+                >
+                  Login Diperlukan
+                </h2>
+                <p className="text-sm text-on-surface-variant mt-1.5 leading-relaxed">
+                  Fitur AI (suara & foto) memerlukan akun untuk dapat digunakan.
+                  Login dengan Google untuk melanjutkan.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3 px-6 py-5">
+              <GoogleSignInButton />
+              <button
+                onClick={() => setShowLoginDialog(false)}
+                className="w-full py-3.5 rounded-full text-sm font-bold text-on-surface-variant border border-outline-variant/25 hover:bg-surface-container transition-colors cursor-pointer"
+              >
+                Nanti Saja
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
+
 
 export default function TambahTransaksi() {
   return (

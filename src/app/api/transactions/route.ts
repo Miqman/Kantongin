@@ -21,10 +21,13 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const cursor = searchParams.get('cursor'); // ISO datetime string of last item's created_at
+    const cursor = searchParams.get('cursor');       // ISO datetime string of last item's created_at
     const startDate = searchParams.get('start_date'); // YYYY-MM-DD
-    const endDate = searchParams.get('end_date'); // YYYY-MM-DD
+    const endDate = searchParams.get('end_date');     // YYYY-MM-DD
     const limitParam = searchParams.get('limit');
+    const typeParam = searchParams.get('type');         // 'income' | 'expense'
+    const categoryId = searchParams.get('category_id'); // UUID
+    const search = searchParams.get('search');          // free-text search on note
 
     let limit = PAGE_SIZE;
     if (limitParam) {
@@ -48,6 +51,23 @@ export async function GET(request: Request) {
     }
     if (endDate) {
       query = query.lte('date', endDate);
+    }
+
+    // Type filtering: income = amount < 0, expense = amount > 0
+    if (typeParam === 'income') {
+      query = query.lt('amount', 0);
+    } else if (typeParam === 'expense') {
+      query = query.gt('amount', 0);
+    }
+
+    // Category filtering
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    // Free-text search on note
+    if (search) {
+      query = query.ilike('note', `%${search}%`);
     }
 
     // Cursor-based pagination: fetch items older than the cursor

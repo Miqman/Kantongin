@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import TopAppBar from '@/components/TopAppBar';
 import BottomNavBar from '@/components/BottomNavBar';
 import TransactionItem from '@/components/TransactionItem';
@@ -11,50 +11,210 @@ import { useStore } from '@/store/useStore';
 import { toast } from 'react-hot-toast';
 import type { Transaction, Category } from '@/types';
 
+// ── Convert DateFilterValue → { start_date, end_date } YYYY-MM-DD strings ────
+function dateFilterToRange(f: DateFilterValue | null): { start?: string; end?: string } {
+  if (!f) return {};
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (f.mode === 'RANGE') {
+    return {
+      start: f.from ? fmt(f.from) : undefined,
+      end: f.to ? fmt(f.to) : undefined,
+    };
+  }
+  if (f.mode === 'MONTH' && f.month !== undefined && f.year !== undefined) {
+    const lastDay = new Date(f.year, f.month + 1, 0).getDate();
+    return {
+      start: `${f.year}-${pad(f.month + 1)}-01`,
+      end: `${f.year}-${pad(f.month + 1)}-${pad(lastDay)}`,
+    };
+  }
+  if (f.mode === 'YEAR' && f.year !== undefined) {
+    return {
+      start: `${f.year}-01-01`,
+      end: `${f.year}-12-31`,
+    };
+  }
+  return {};
+}
+
+// ── Build API URL from active filters ─────────────────────────────────────────
+function buildUrl(params: {
+  start?: string;
+  end?: string;
+  type: 'ALL' | 'income' | 'expense';
+  categoryId: string;
+  search: string;
+  cursor?: string;
+}): string {
+  const p = new URLSearchParams();
+  if (params.start) p.set('start_date', params.start);
+  if (params.end) p.set('end_date', params.end);
+  if (params.type !== 'ALL') p.set('type', params.type);
+  if (params.categoryId !== 'ALL') p.set('category_id', params.categoryId);
+  if (params.search.trim()) p.set('search', params.search.trim());
+  if (params.cursor) p.set('cursor', params.cursor);
+  return `/api/transactions?${p.toString()}`;
+}
+
+const PAGE_SIZE = 50;
+
 export default function Riwayat() {
-  const {
-    transactions,
-    isLoading,
-    isLoadingMore,
-    hasMore,
-    deleteTransaction,
-    loadMoreTransactions,
-  } = useStore();
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState<DateFilterValue | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string>('ALL');
-
+  const { deleteTransaction, updateTransaction, user, isLoading: storeLoading } = useStore();
   const router = useRouter();
 
-  // ── Infinite scroll via Intersection Observer ──
+  // ── Filter state ─────────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue | null>(null);
+  const [filterCategory, setFilterCategory] = useState<string>('ALL');
+  const [filterType, setFilterType] = useState<'ALL' | 'income' | 'expense'>('ALL');
+
+  // ── Page-local transaction state ──────────────────────────────────────────────
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
+  // ── Debounced search (avoid API call on every keystroke) ───────────────────
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // ── Derived: unique categories from loaded transactions (for picker) ────────
+  const uniqueCategories: Category[] = useMemo(() => {
+    const seen = new Set<string>();
+    const cats: Category[] = [];
+    transactions.forEach(t => {
+      if (t.category && !seen.has(t.category_id)) {
+        seen.add(t.category_id);
+        cats.push(t.category);
+      }
+    });
+    return cats;
+  }, [transactions]);
+
+  // ── Fetch (reset) when any filter changes ─────────────────────────────────
+  const dateRange = useMemo(() => dateFilterToRange(dateFilter), [dateFilter]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (storeLoading) return; // wait until auth is resolved
+
+    setIsLoading(true);
+    setNextCursor(null);
+
+    try {
+      if (user) {
+        // ── Online: server-side filtering via API ─────────────────────────────
+        const url = buildUrl({
+          ...dateRange,
+          type: filterType,
+          categoryId: filterCategory,
+          search: debouncedSearch,
+        });
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Gagal mengambil data transaksi');
+        const json = await res.json();
+        const items: Transaction[] = json.data ?? [];
+        setTransactions(items);
+        setNextCursor(json.nextCursor ?? null);
+        setHasMore(json.hasMore ?? false);
+      } else {
+        // ── Guest: Dexie (all data local — client-side filtering is fine) ─────
+        const { default: db } = await import('@/lib/dexie');
+        const catData = await db.categories.toArray();
+        const catMap = new Map(catData.map(c => [c.id, c as Category]));
+
+        let all = (await db.transactions.orderBy('date').reverse().toArray()).map(tx => ({
+          ...tx,
+          category: catMap.get(tx.category_id) ?? null,
+        })) as Transaction[];
+
+        // Date filter
+        if (dateRange.start) all = all.filter(t => t.date >= dateRange.start!);
+        if (dateRange.end)   all = all.filter(t => t.date <= dateRange.end!);
+        // Type filter
+        if (filterType === 'income')  all = all.filter(t => Number(t.amount) < 0);
+        if (filterType === 'expense') all = all.filter(t => Number(t.amount) > 0);
+        // Category filter
+        if (filterCategory !== 'ALL') all = all.filter(t => t.category_id === filterCategory);
+        // Search filter
+        if (debouncedSearch.trim()) {
+          const q = debouncedSearch.toLowerCase();
+          all = all.filter(t =>
+            (t.note || '').toLowerCase().includes(q) ||
+            (t.category?.name || '').toLowerCase().includes(q)
+          );
+        }
+
+        setTransactions(all);
+        setHasMore(false);
+        setNextCursor(null);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memuat transaksi.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [storeLoading, user, dateRange, filterType, filterCategory, debouncedSearch]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // ── Load more (infinite scroll) ──────────────────────────────────────────────
+  const loadMore = useCallback(async () => {
+    if (!hasMore || isLoadingMore || !nextCursor || !user) return;
+    setIsLoadingMore(true);
+    try {
+      const url = buildUrl({
+        ...dateRange,
+        type: filterType,
+        categoryId: filterCategory,
+        search: debouncedSearch,
+        cursor: nextCursor,
+      });
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Gagal memuat lebih banyak');
+      const json = await res.json();
+      const items: Transaction[] = json.data ?? [];
+      setTransactions(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        return [...prev, ...items.filter(t => !existingIds.has(t.id))];
+      });
+      setNextCursor(json.nextCursor ?? null);
+      setHasMore(json.hasMore ?? false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, isLoadingMore, nextCursor, user, dateRange, filterType, filterCategory, debouncedSearch]);
+
+  // ── Intersection Observer for infinite scroll ─────────────────────────────
   const sentinelRef = useRef<HTMLDivElement>(null);
-
-  const handleLoadMore = useCallback(async () => {
-    if (!hasMore || isLoadingMore) return;
-    await loadMoreTransactions();
-  }, [hasMore, isLoadingMore, loadMoreTransactions]);
-
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          handleLoadMore();
-        }
-      },
-      { rootMargin: '200px' } // Trigger 200px before reaching bottom
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
+      { rootMargin: '200px' }
     );
-
     observer.observe(el);
     return () => observer.disconnect();
-  }, [handleLoadMore]);
+  }, [loadMore]);
 
+  // ── Actions ──────────────────────────────────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
       await deleteTransaction(id);
+      setTransactions(prev => prev.filter(t => t.id !== id));
       toast.success('Transaksi berhasil dihapus');
     } catch {
       toast.error('Terjadi kesalahan koneksi saat menghapus.');
@@ -65,71 +225,39 @@ export default function Riwayat() {
     router.push(`/tambah?edit=${id}`);
   };
 
-  // Get unique categories natively from loaded transactions
-  const uniqueCategories: Category[] = Array.from(new Set(transactions.map(t => t.category_id)))
-    .map(id => transactions.find(t => t.category_id === id)?.category)
-    .filter((c): c is Category => c != null);
+  const resetAllFilters = () => {
+    setDateFilter(null);
+    setFilterCategory('ALL');
+    setFilterType('ALL');
+    setSearchQuery('');
+  };
 
-  // Filter based on search query and active parameters
-  const filteredTransactions = transactions.filter(trx => {
-    // 1. Search Logic
-    const text = `${trx.note || ''} ${trx.category?.name || ''}`.toLowerCase();
-    const matchesSearch = text.includes(searchQuery.toLowerCase());
-
-    // 2. Date Filter Logic
-    let matchesDate = true;
-    if (dateFilter) {
-      const trxDate = new Date(trx.date);
-      if (dateFilter.mode === 'RANGE') {
-        const from = dateFilter.from ? new Date(new Date(dateFilter.from).setHours(0, 0, 0, 0)) : null;
-        const to = dateFilter.to ? new Date(new Date(dateFilter.to).setHours(23, 59, 59, 999)) : null;
-        if (from) matchesDate = matchesDate && trxDate >= from;
-        if (to) matchesDate = matchesDate && trxDate <= to;
-      } else if (dateFilter.mode === 'MONTH') {
-        matchesDate =
-          trxDate.getMonth() === dateFilter.month &&
-          trxDate.getFullYear() === dateFilter.year;
-      } else if (dateFilter.mode === 'YEAR') {
-        matchesDate = trxDate.getFullYear() === dateFilter.year;
-      }
-    }
-
-    // 3. Category Filter Logic
-    let matchesCategory = true;
-    if (filterCategory !== 'ALL') {
-      matchesCategory = trx.category_id === filterCategory;
-    }
-
-    return matchesSearch && matchesDate && matchesCategory;
-  });
-
-  // Grouping Function by Date
-  const groupTransactions = (trxs: Transaction[]) => {
+  // ── Grouping ─────────────────────────────────────────────────────────────────
+  const groupedData = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
-    trxs.forEach((trx) => {
-      const dateKey = new Date(trx.date).toLocaleDateString('en-CA');
-      if (!groups[dateKey]) groups[dateKey] = [];
-      groups[dateKey].push(trx);
+    transactions.forEach(trx => {
+      // Use the date string directly — no timezone conversion needed
+      const key = trx.date; // "YYYY-MM-DD"
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(trx);
     });
-
     return Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
       .map(key => ({ date: key, items: groups[key] }));
-  };
+  }, [transactions]);
 
   const getLabelForDate = (dateString: string) => {
-    const today = new Date().toLocaleDateString('en-CA');
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = yesterdayDate.toLocaleDateString('en-CA');
-
-    if (dateString === today) return "Hari Ini";
-    if (dateString === yesterday) return "Kemarin";
-    return new Date(dateString).toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
+    const now = new Date();
+    const today = now.toLocaleDateString('en-CA');
+    const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toLocaleDateString('en-CA');
+    if (dateString === today) return 'Hari Ini';
+    if (dateString === yest) return 'Kemarin';
+    // Parse as local date (split string, no UTC conversion)
+    const [y, m, d] = dateString.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const groupedData = groupTransactions(filteredTransactions);
-  const hasActiveFilter = dateFilter !== null || filterCategory !== 'ALL' || searchQuery !== "";
+  const hasActiveFilter = dateFilter !== null || filterCategory !== 'ALL' || searchQuery !== '' || filterType !== 'ALL';
 
   return (
     <>
@@ -141,6 +269,7 @@ export default function Riwayat() {
             <h2 className="font-headline text-3xl font-bold tracking-tight mb-2">Riwayat Transaksi</h2>
             <p className="text-on-surface-variant text-sm font-medium">Melacak aliran modal berdaulat Anda</p>
           </div>
+
           {/* Search Bar */}
           <div className="relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-on-surface-variant/50 group-focus-within:text-primary transition-colors">
@@ -154,24 +283,65 @@ export default function Riwayat() {
               type="text"
             />
           </div>
+
           {/* Horizontal Filters */}
-          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-            <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
-            <CategoryFilterPicker
-              value={filterCategory}
-              categories={uniqueCategories}
-              onChange={setFilterCategory}
-            />
-            {hasActiveFilter && (
-              <button
-                onClick={() => { setDateFilter(null); setFilterCategory('ALL'); setSearchQuery(""); }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap hover:bg-error/20 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">close</span>
-                Hapus Filter
-              </button>
-            )}
+          {/* Row 1: Date + Category + Reset */}
+          <div className="relative -mx-6">
+            {/* Right-edge fade: hints that the row is scrollable */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-10 z-10
+              bg-gradient-to-l from-surface to-transparent" />
+
+            <div className="flex gap-2.5 overflow-x-auto pb-1 px-6 scrollbar-hide scroll-smooth">
+              <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
+              <CategoryFilterPicker
+                value={filterCategory}
+                categories={uniqueCategories}
+                onChange={setFilterCategory}
+              />
+              {hasActiveFilter && (
+                <button
+                  onClick={resetAllFilters}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap hover:bg-error/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">close</span>
+                  Hapus Filter
+                </button>
+              )}
+              {/* Spacer so last chip isn't hidden behind the fade */}
+              <div className="w-4 shrink-0" />
+            </div>
           </div>
+
+          {/* Row 2: Type filter chips — always visible, no scroll */}
+          <div className="flex gap-2 pt-1">
+            <span className="self-center text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mr-1 whitespace-nowrap">
+              Tipe
+            </span>
+            {(['ALL', 'income', 'expense'] as const).map((type) => {
+              const label     = type === 'ALL' ? 'Semua' : type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+              const icon      = type === 'ALL' ? 'filter_list' : type === 'income' ? 'south' : 'north';
+              const isActive  = filterType === type;
+              const activeClass =
+                type === 'income'  ? 'bg-secondary text-on-secondary shadow-sm' :
+                type === 'expense' ? 'bg-primary  text-on-primary  shadow-sm' :
+                                     'bg-surface-container-highest text-on-surface shadow-sm';
+              return (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${
+                    isActive
+                      ? activeClass
+                      : 'bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[13px]">{icon}</span>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
         </section>
 
         {/* Transactions List Grouped by Date */}
@@ -183,7 +353,9 @@ export default function Riwayat() {
           ) : groupedData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 opacity-50">
               <span className="material-symbols-outlined text-5xl mb-4">receipt_long</span>
-              <p className="font-body text-sm font-medium">Buku besar bersih. Tidak ada rekam jejak.</p>
+              <p className="font-body text-sm font-medium">
+                {hasActiveFilter ? 'Tidak ada transaksi yang cocok dengan filter.' : 'Buku besar bersih. Tidak ada rekam jejak.'}
+              </p>
             </div>
           ) : (
             <>
@@ -203,7 +375,6 @@ export default function Riwayat() {
                     {group.items.map(trx => {
                       const isIncome = Number(trx.amount) < 0;
                       const absoluteAmountStr = Math.abs(Number(trx.amount)).toLocaleString('id-ID');
-
                       return (
                         <TransactionItem
                           key={trx.id}
@@ -212,9 +383,9 @@ export default function Riwayat() {
                           category={trx.category?.name || 'Tanpa Kategori'}
                           vendor={trx.note || 'Transaksi Kriptik'}
                           amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
-                          date={new Date(trx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' })}
+                          date={trx.date}
                           isIncome={isIncome}
-                          iconColorClass={isIncome ? "text-secondary" : "text-primary"}
+                          iconColorClass={isIncome ? 'text-secondary' : 'text-primary'}
                           onDelete={() => handleDelete(trx.id)}
                           onEdit={() => handleEdit(trx.id)}
                         />
