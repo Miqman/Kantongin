@@ -236,8 +236,8 @@ export default function Riwayat() {
   const groupedData = useMemo(() => {
     const groups: Record<string, Transaction[]> = {};
     transactions.forEach(trx => {
-      // Use the date string directly — no timezone conversion needed
-      const key = trx.date; // "YYYY-MM-DD"
+      // Normalisasi ke YYYY-MM-DD: API Supabase bisa return full ISO datetime
+      const key = trx.date.slice(0, 10);
       if (!groups[key]) groups[key] = [];
       groups[key].push(trx);
     });
@@ -284,63 +284,64 @@ export default function Riwayat() {
             />
           </div>
 
-          {/* Horizontal Filters */}
-          {/* Row 1: Date + Category + Reset */}
+          {/* Horizontal Filters — single scrollable row */}
           <div className="relative -mx-6">
-            {/* Right-edge fade: hints that the row is scrollable */}
+            {/* Right-edge fade hint */}
             <div className="pointer-events-none absolute inset-y-0 right-0 w-10 z-10
               bg-gradient-to-l from-surface to-transparent" />
 
-            <div className="flex gap-2.5 overflow-x-auto pb-1 px-6 scrollbar-hide scroll-smooth">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 px-6 scrollbar-hide scroll-smooth">
               <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
               <CategoryFilterPicker
                 value={filterCategory}
                 categories={uniqueCategories}
                 onChange={setFilterCategory}
               />
+
+              {/* Divider */}
+              <div className="w-px h-5 bg-outline-variant/30 shrink-0 mx-1" />
+
+              {/* Type chips */}
+              {(['ALL', 'income', 'expense'] as const).map((type) => {
+                const label = type === 'ALL' ? 'Semua' : type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+                const icon  = type === 'ALL' ? 'filter_list' : type === 'income' ? 'south' : 'north';
+                const isActive = filterType === type;
+                const activeClass =
+                  type === 'income'  ? 'bg-secondary text-on-secondary shadow-sm' :
+                  type === 'expense' ? 'bg-primary text-on-primary shadow-sm' :
+                                       'bg-surface-container-highest text-on-surface shadow-sm';
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setFilterType(type)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0
+                      transition-all duration-200 active:scale-95 cursor-pointer ${
+                      isActive
+                        ? activeClass
+                        : 'bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">{icon}</span>
+                    {label}
+                  </button>
+                );
+              })}
+
               {hasActiveFilter && (
                 <button
                   onClick={resetAllFilters}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap hover:bg-error/20 active:scale-95 transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap shrink-0 hover:bg-error/20 active:scale-95 transition-all cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[15px]">close</span>
+                  <span className="material-symbols-outlined text-[14px]">close</span>
                   Hapus Filter
                 </button>
               )}
-              {/* Spacer so last chip isn't hidden behind the fade */}
+
+              {/* Spacer so last chip clears the fade */}
               <div className="w-4 shrink-0" />
             </div>
           </div>
 
-          {/* Row 2: Type filter chips — always visible, no scroll */}
-          <div className="flex gap-2 pt-1">
-            <span className="self-center text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mr-1 whitespace-nowrap">
-              Tipe
-            </span>
-            {(['ALL', 'income', 'expense'] as const).map((type) => {
-              const label     = type === 'ALL' ? 'Semua' : type === 'income' ? 'Pemasukan' : 'Pengeluaran';
-              const icon      = type === 'ALL' ? 'filter_list' : type === 'income' ? 'south' : 'north';
-              const isActive  = filterType === type;
-              const activeClass =
-                type === 'income'  ? 'bg-secondary text-on-secondary shadow-sm' :
-                type === 'expense' ? 'bg-primary  text-on-primary  shadow-sm' :
-                                     'bg-surface-container-highest text-on-surface shadow-sm';
-              return (
-                <button
-                  key={type}
-                  onClick={() => setFilterType(type)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${
-                    isActive
-                      ? activeClass
-                      : 'bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[13px]">{icon}</span>
-                  {label}
-                </button>
-              );
-            })}
-          </div>
 
         </section>
 
@@ -383,7 +384,14 @@ export default function Riwayat() {
                           category={trx.category?.name || 'Tanpa Kategori'}
                           vendor={trx.note || 'Transaksi Kriptik'}
                           amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
-                          date={trx.date}
+                          date={(() => {
+                            // Ambil YYYY-MM-DD saja, lalu format lokal tanpa konversi timezone
+                            const ymd = trx.date.slice(0, 10);
+                            const [y, m, d] = ymd.split('-').map(Number);
+                            return new Date(y, m - 1, d).toLocaleDateString('id-ID', {
+                              day: '2-digit', month: 'short', year: 'numeric'
+                            });
+                          })()}
                           isIncome={isIncome}
                           iconColorClass={isIncome ? 'text-secondary' : 'text-primary'}
                           onDelete={() => handleDelete(trx.id)}
