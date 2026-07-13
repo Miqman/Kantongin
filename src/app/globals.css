@@ -910,8 +910,153 @@
   }
 }
 
+/* Hide scrollbar cross-browser */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;             /* Chrome/Safari */
+}
+
 /* ── Custom animations ── */
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
+}
+
+/* ══════════════════════════════════════════════════
+   REDESIGN POLISH — Professional UX upgrades
+══════════════════════════════════════════════════ */
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Tabular numbers everywhere financial data shows */
+.font-headline,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Text wrapping */
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Grain noise overlay — adds texture depth to surfaces */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* Active pill on nav items — replaces scale-110 pattern */
+.nav-pill-active {
+  position: relative;
+}
+.nav-pill-active::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--app-primary);
+}
+
+/* Ambient glow behind hero balance */
+.hero-glow {
+  position: relative;
+}
+.hero-glow::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(ellipse 60% 50% at 30% 60%, var(--app-primary), transparent 70%);
+  opacity: 0.07;
+  pointer-events: none;
+  border-radius: 2rem;
+  z-index: 0;
+}
+
+/* Spotlight border on cards — subtle hover illuminate */
+.card-spotlight {
+  position: relative;
+  transition: box-shadow 0.25s ease;
+}
+.card-spotlight:hover {
+  box-shadow: 0 0 0 1px var(--app-primary), var(--app-shadow-ambient);
+}
+
+/* Button press feedback */
+button, a[role="button"], [data-interactive] {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+/* Tinted colored shadows on primary cards */
+.shadow-primary-tint {
+  box-shadow: 0 8px 32px -4px color-mix(in srgb, var(--app-primary) 20%, transparent);
+}
+.shadow-secondary-tint {
+  box-shadow: 0 8px 32px -4px color-mix(in srgb, var(--app-secondary) 15%, transparent);
+}
+
+/* Income / expense amount pill */
+.amount-badge {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+/* Skeleton pulse with wave effect */
+@keyframes skeleton-wave {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-wave {
+  background: linear-gradient(
+    90deg,
+    var(--app-surface-container-high) 25%,
+    var(--app-surface-bright) 50%,
+    var(--app-surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.6s ease-in-out infinite;
+}
+
+/* Better focus ring */
+:focus-visible {
+  outline: 2px solid var(--app-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip-to-content for a11y */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: var(--app-primary);
+  color: var(--app-on-primary);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  z-index: 10000;
+  border-radius: 0 0 8px 0;
+}
+.skip-link:focus {
+  top: 0;
 }

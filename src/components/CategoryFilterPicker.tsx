@@ -172,7 +172,7 @@ export default function CategoryFilterPicker({ value, categories, onChange }: Pr
             </button>
           </div>
           {/* Scrollable list */}
-          <div className="overflow-y-auto flex-1 pb-6">
+          <div className="overflow-y-auto scrollbar-hide flex-1 pb-6">
             {CategoryList}
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function CategoryFilterPicker({ value, categories, onChange }: Pr
       <div
         ref={panelRef}
         style={{ ...dropdownStyle, maxHeight: "60vh" }}
-        className="bg-surface border border-outline-variant/15 rounded-2xl shadow-2xl overflow-y-auto"
+        className="bg-surface border border-outline-variant/15 rounded-2xl shadow-2xl overflow-y-auto scrollbar-hide"
       >
         {CategoryList}
       </div>

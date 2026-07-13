@@ -1,44 +1,54 @@
 "use client";
-import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+
+const NAV_ITEMS = [
+  { href: '/', icon: 'home', label: 'Beranda' },
+  { href: '/tambah', icon: 'add_circle', label: 'Tambah' },
+  { href: '/riwayat', icon: 'history', label: 'Riwayat' },
+  { href: '/profil', icon: 'person', label: 'Profil' },
+];
 
 export default function BottomNavBar() {
   const pathname = usePathname();
 
-  const getLinkClasses = (path: string) => {
-    const isActive = pathname === path;
-    if (isActive) {
-      return "flex flex-col items-center justify-center text-primary font-bold scale-110 transition-transform";
-    }
-    return "flex flex-col items-center justify-center text-on-surface-variant/70 transition-all hover:text-primary active:scale-95 duration-150";
-  };
-
   return (
-    <nav className="fixed bottom-0 w-full z-50 rounded-t-[2rem] bg-surface-container-high/60 backdrop-blur-xl border-t border-outline-variant/15 shadow-[0px_-8px_24px_rgba(6,14,32,0.4)] flex justify-around items-center px-4 pb-6 pt-3">
-      {/* Beranda */}
-      <Link href="/" className={getLinkClasses('/')}>
-        <span className="material-symbols-outlined mb-1" style={pathname === '/' ? { fontVariationSettings: "'FILL' 1" } : {}}>home</span>
-        <span className="font-body text-[11px] font-medium tracking-wide uppercase">Beranda</span>
-      </Link>
+    <nav
+      className="fixed bottom-0 w-full z-50 bg-surface/80 backdrop-blur-2xl border-t border-outline-variant/10"
+    >
+      <div className="flex justify-around items-center px-1 pt-1 pb-2 max-w-2xl mx-auto">
+        {NAV_ITEMS.map(({ href, icon, label }) => {
+          const isActive = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              className="relative flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-all duration-200 active:scale-95"
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {/* Active background pill behind icon */}
+              <span
+                className={`relative flex items-center justify-center w-12 h-7 rounded-full transition-all duration-200
+                  ${isActive ? 'bg-primary/12' : ''}`}
+              >
+                <span
+                  className={`material-symbols-outlined transition-all duration-200 ${isActive ? 'text-primary' : 'text-on-surface-variant/50'}`}
+                  style={{
+                    fontSize: '22px',
+                    fontVariationSettings: isActive ? "'FILL' 1, 'wght' 500" : "'FILL' 0, 'wght' 300",
+                  }}
+                >
+                  {icon}
+                </span>
+              </span>
 
-      {/* Tambah */}
-      <Link href="/tambah" className={getLinkClasses('/tambah')}>
-        <span className="material-symbols-outlined mb-1">add_circle</span>
-        <span className="font-body text-[11px] font-medium tracking-wide uppercase">Tambah</span>
-      </Link>
-
-      {/* Riwayat */}
-      <Link href="/riwayat" className={getLinkClasses('/riwayat')}>
-        <span className="material-symbols-outlined mb-1" style={pathname === '/riwayat' ? { fontVariationSettings: "'FILL' 1" } : {}}>history</span>
-        <span className="font-body text-[11px] font-medium tracking-wide uppercase">Riwayat</span>
-      </Link>
-
-      {/* Profil */}
-      <Link href="/profil" className={getLinkClasses('/profil')}>
-        <span className="material-symbols-outlined mb-1" style={pathname === '/profil' ? { fontVariationSettings: "'FILL' 1" } : {}}>person</span>
-        <span className="font-body text-[11px] font-medium tracking-wide uppercase">Profil</span>
-      </Link>
+              <span className={`text-[10px] tracking-wide transition-all duration-200 ${isActive ? 'font-semibold text-primary' : 'font-medium text-on-surface-variant/50'}`}>
+                {label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

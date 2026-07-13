@@ -27,22 +27,22 @@ export default function RecentTransactions() {
   };
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <div className="flex justify-between items-center">
-        <h2 className="font-headline text-lg font-bold tracking-tight">Transaksi Terakhir</h2>
+        <h2 className="font-headline text-base font-bold tracking-tight text-on-surface">Transaksi terakhir</h2>
         <Link
           href="/riwayat"
-          className="text-primary text-xs font-bold uppercase tracking-widest hover:opacity-80 active:scale-95 transition-all"
+          className="text-[10px] font-semibold text-primary/80 hover:text-primary uppercase tracking-[0.1em] active:scale-95 transition-all duration-150 flex items-center gap-0.5"
         >
-          Lihat Semua
+          Lihat semua
+          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>chevron_right</span>
         </Link>
       </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {loading ? (
-          /* Skeleton */
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 rounded-2xl bg-surface-container-high animate-pulse" />
+            <div key={i} className="h-[60px] rounded-2xl skeleton-wave" />
           ))
         ) : recent.length > 0 ? (
           recent.map((trx: any) => {
@@ -55,7 +55,7 @@ export default function RecentTransactions() {
                 id={trx.id}
                 icon={trx.category?.icon || 'payments'}
                 category={trx.category?.name || 'Tanpa Kategori'}
-                vendor={trx.note || 'Transaksi Biasa'}
+                vendor={trx.note || 'Transaksi biasa'}
                 amount={isIncome ? `+ Rp ${absoluteAmountStr}` : `- Rp ${absoluteAmountStr}`}
                 date={new Date(trx.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
                 isIncome={isIncome}
@@ -66,9 +66,14 @@ export default function RecentTransactions() {
             );
           })
         ) : (
-          <div className="flex flex-col items-center justify-center py-10 opacity-60">
-            <span className="material-symbols-outlined text-3xl mb-2 text-on-surface-variant/40">receipt_long</span>
-            <p className="text-sm text-on-surface-variant font-medium">Belum ada transaksi.</p>
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-surface-container-high flex items-center justify-center">
+              <span className="material-symbols-outlined text-on-surface-variant/30" style={{ fontSize: '24px' }}>receipt_long</span>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-on-surface-variant/60">Belum ada transaksi</p>
+              <p className="text-xs text-on-surface-variant/40 mt-0.5">Tambahkan transaksi pertamamu</p>
+            </div>
           </div>
         )}
       </div>

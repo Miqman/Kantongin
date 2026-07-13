@@ -63,16 +63,16 @@ export default function TransactionItem({
 
   return (
     <>
-      <div className="relative w-full rounded-2xl overflow-hidden bg-surface-container-high/50 group touch-pan-y">
+      <div className="relative w-full rounded-2xl overflow-hidden bg-surface-container-high/30 group touch-pan-y">
         {/* Background action hints */}
-        <div className="absolute inset-0 flex justify-between items-center px-5">
-          <div className="flex items-center text-primary font-bold gap-2">
-            <span className="material-symbols-outlined text-[20px]">edit</span>
-            <span className="text-xs uppercase tracking-widest hidden sm:inline">Edit</span>
+        <div className="absolute inset-0 flex justify-between items-center px-4">
+          <div className="flex items-center text-primary gap-1.5">
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:inline">Edit</span>
           </div>
-          <div className="flex items-center text-error font-bold gap-2">
-            <span className="text-xs uppercase tracking-widest hidden sm:inline">Hapus</span>
-            <span className="material-symbols-outlined text-[20px]">delete</span>
+          <div className="flex items-center text-error gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:inline">Hapus</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>delete</span>
           </div>
         </div>
 
@@ -80,24 +80,26 @@ export default function TransactionItem({
         <motion.div
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.5}
+          dragElastic={0.4}
           dragDirectionLock
           onDragEnd={handleDragEnd}
           animate={controls}
-          className="relative z-10 flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant/15 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
+          className="relative z-10 flex items-center justify-between px-3.5 py-3 bg-surface-container-lowest border border-outline-variant/10 rounded-2xl cursor-grab active:cursor-grabbing"
         >
-          <div className="flex items-center gap-3.5">
-            <div className={`w-11 h-11 rounded-xl bg-primary/8 dark:bg-surface-container-highest flex items-center justify-center ${iconColorClass}`}>
-              <span className="material-symbols-outlined text-[22px]">{icon}</span>
+          <div className="flex items-center gap-3">
+            {/* Icon container — square, not round */}
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isIncome ? 'bg-secondary/10' : 'bg-primary/8'} ${iconColorClass}`}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1, 'wght' 400" }}>{icon}</span>
             </div>
-            <div>
-              <p className="font-bold text-on-surface text-sm">{category}</p>
-              <p className="text-xs text-on-surface-variant/70 max-w-[150px] truncate">{vendor}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-on-surface text-[13px] leading-tight">{category}</p>
+              <p className="text-[11px] text-on-surface-variant/55 mt-0.5 max-w-[140px] truncate">{vendor}</p>
             </div>
           </div>
-          <div className="text-right whitespace-nowrap">
-            <p className="font-bold text-sm" style={amountStyle}>{amount}</p>
-            <p className="text-[10px] text-on-surface-variant/50 font-medium">{date}</p>
+
+          <div className="text-right flex-shrink-0 ml-2">
+            <p className="font-bold text-[13px] amount-badge leading-tight" style={amountStyle}>{amount}</p>
+            <p className="text-[10px] text-on-surface-variant/40 font-medium mt-0.5">{date}</p>
           </div>
         </motion.div>
       </div>

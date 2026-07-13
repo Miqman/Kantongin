@@ -145,105 +145,128 @@ export default function HeroSection() {
   return (
     <>
       {/* Hero Section: Total Balance */}
-      <section className="space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="font-label text-[11px] font-medium tracking-widest uppercase text-on-surface-variant">
-            {showAllTime ? 'Total Dana (Semua)' : 'Total Dana Bulan Ini'}
+      <section className="relative space-y-3 hero-glow">
+        {/* Label + toggle */}
+        <div className="relative z-10 flex items-center gap-2">
+          <p className="font-label text-[10px] font-semibold tracking-[0.12em] uppercase text-on-surface-variant/70">
+            {showAllTime ? 'Semua waktu' : 'Bulan ini'}
           </p>
-          {/* Toggle all-time / bulan ini */}
           <button
             onClick={() => setShowAllTime(prev => !prev)}
             title={showAllTime ? 'Tampilkan bulan ini' : 'Tampilkan semua waktu'}
-            className="flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide border transition-all duration-200
-              border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide border border-outline-variant/20 text-on-surface-variant/60 hover:bg-surface-container-high hover:text-on-surface hover:border-outline-variant/40 transition-all duration-200 active:scale-95"
           >
-            <span className="material-symbols-outlined text-[12px]!">
+            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
               {showAllTime ? 'calendar_month' : 'all_inclusive'}
             </span>
             {showAllTime ? 'Bulan ini' : 'Semua'}
           </button>
         </div>
-        <div className="flex items-baseline gap-2">
+
+        {/* Balance + growth */}
+        <div className="relative z-10 flex items-end gap-3">
           {loading ? (
-            <div className="h-10 w-48 bg-surface-container-high animate-pulse rounded-lg mt-1"></div>
+            <div className="h-12 w-52 skeleton-wave rounded-xl" />
           ) : (
             <>
-              <span className="text-display-md font-headline text-4xl font-extrabold tracking-tight text-on-surface">
+              <span className="font-headline text-[2.6rem] font-extrabold tracking-[-0.04em] text-on-surface leading-none amount-badge">
                 Rp {formatCurrency(displayDana)}
               </span>
               {growth !== null && (
-                <span className={`text-sm font-bold transition-opacity ${growth >= 0 ? 'text-secondary' : 'text-error'}`}>
+                <span className={`mb-1 inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full transition-all
+                  ${growth >= 0
+                    ? 'bg-secondary/10 text-secondary'
+                    : 'bg-error/10 text-error'
+                  }`}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                    {growth >= 0 ? 'trending_up' : 'trending_down'}
+                  </span>
                   {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
                 </span>
               )}
             </>
           )}
         </div>
-        {/* {!loading && !showAllTime && (
-          <p className="text-[10px] text-on-surface-variant/60">
-            vs bulan lalu
+
+        {!loading && !showAllTime && (
+          <p className="relative z-10 text-[10px] text-on-surface-variant/40 font-medium">
+            dibandingkan bulan lalu
           </p>
-        )} */}
+        )}
       </section>
 
       {/* Bento Grid: Summary Cards */}
-      <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <section className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {/* Total Hari Ini */}
-        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-low flex flex-col justify-between border border-outline-variant/5">
-          <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
-          <div className="mt-4">
-            <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Total Hari Ini</p>
+        <div className="col-span-1 p-4 rounded-2xl bg-surface-container-low flex flex-col justify-between gap-4 border border-outline-variant/8 card-spotlight transition-all duration-200">
+          <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-secondary" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+              account_balance_wallet
+            </span>
+          </div>
+          <div>
+            <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">Hari ini</p>
             {loading ? (
-              <div className="h-6 w-16 bg-surface-container-highest animate-pulse rounded mt-1"></div>
+              <div className="h-5 w-16 skeleton-wave rounded" />
             ) : (
-              <p className="font-headline text-lg font-bold text-on-surface">Rp {formatCompact(totalHariIni)}</p>
+              <p className="font-headline text-base font-bold text-on-surface amount-badge">Rp {formatCompact(totalHariIni)}</p>
             )}
           </div>
         </div>
 
         {/* Total Bulan Ini */}
-        <div className="col-span-1 p-5 rounded-[1.5rem] bg-surface-container-high flex flex-col justify-between border border-outline-variant/10">
-          <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
-          <div className="mt-4">
-            <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Total Bulan Ini</p>
+        <div className="col-span-1 p-4 rounded-2xl bg-surface-container-high flex flex-col justify-between gap-4 border border-outline-variant/10 card-spotlight transition-all duration-200">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+              calendar_month
+            </span>
+          </div>
+          <div>
+            <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">Bulan ini</p>
             {loading ? (
-              <div className="h-6 w-16 bg-surface-container-highest animate-pulse rounded mt-1"></div>
+              <div className="h-5 w-16 skeleton-wave rounded" />
             ) : (
-              <p className="font-headline text-lg font-bold text-on-surface">Rp {formatCompact(totalBulanIni)}</p>
+              <p className="font-headline text-base font-bold text-on-surface amount-badge">Rp {formatCompact(totalBulanIni)}</p>
             )}
           </div>
         </div>
 
-        {/* Sisa Budget — only shown when a monthly budget is set */}
+        {/* Sisa Budget */}
         {sisaBudget !== 0 || (Array.isArray(bdgData) && bdgData.some(b => b.period === 'monthly')) ? (
-          <div className={`col-span-2 md:col-span-1 p-5 rounded-[1.5rem] flex flex-col justify-between aspect-auto border transition-all duration-300 ${sisaBudget < 0
-            ? 'bg-error/8 border-error/25'
-            : 'bg-surface-container-low border-outline-variant/5'
-            }`}>
-            <span
-              className={`material-symbols-outlined ${sisaBudget < 0 ? 'text-error' : 'text-primary'}`}
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              {sisaBudget < 0 ? 'warning' : 'analytics'}
-            </span>
-            <div className="mt-4">
-              <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Sisa Budget</p>
+          <div className={`col-span-2 md:col-span-1 p-4 rounded-2xl flex flex-col justify-between gap-4 border transition-all duration-300 card-spotlight
+            ${sisaBudget < 0
+              ? 'bg-error/6 border-error/20'
+              : 'bg-surface-container-low border-outline-variant/8'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${sisaBudget < 0 ? 'bg-error/10' : 'bg-primary/10'}`}>
+              <span
+                className={`material-symbols-outlined ${sisaBudget < 0 ? 'text-error' : 'text-primary'}`}
+                style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}
+              >
+                {sisaBudget < 0 ? 'warning' : 'analytics'}
+              </span>
+            </div>
+            <div>
+              <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">Sisa budget</p>
               {loading ? (
-                <div className="h-6 w-24 bg-surface-container-highest animate-pulse rounded mt-1" />
+                <div className="h-5 w-24 skeleton-wave rounded" />
               ) : (
-                <p className={`font-headline text-lg font-extrabold ${sisaBudget < 0 ? 'text-error' : 'text-on-surface'
-                  }`}>
-                  Rp {formatCurrency(sisaBudget)}
+                <p className={`font-headline text-base font-extrabold amount-badge ${sisaBudget < 0 ? 'text-error' : 'text-on-surface'}`}>
+                  Rp {formatCompact(Math.abs(sisaBudget))}{sisaBudget < 0 ? ' lebih' : ''}
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="col-span-2 md:col-span-1 p-5 rounded-[1.5rem] bg-surface-container-low border border-dashed border-outline-variant/30 flex flex-col justify-between aspect-auto opacity-60">
-            <span className="material-symbols-outlined text-on-surface-variant">savings</span>
-            <div className="mt-4">
-              <p className="font-label text-[10px] font-bold text-on-surface-variant tracking-wider">Budget Bulanan</p>
-              <p className="text-xs text-on-surface-variant/70 mt-1">Belum diset</p>
+          <div className="col-span-2 md:col-span-1 p-4 rounded-2xl bg-surface-container-low border border-dashed border-outline-variant/20 flex flex-col justify-between gap-4 opacity-50">
+            <div className="w-8 h-8 rounded-xl bg-surface-container-high flex items-center justify-center">
+              <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '18px' }}>savings</span>
+            </div>
+            <div>
+              <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">Budget bulanan</p>
+              <p className="text-xs text-on-surface-variant/50 font-medium">Belum diatur</p>
             </div>
           </div>
         )}

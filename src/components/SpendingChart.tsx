@@ -74,48 +74,48 @@ export default function SpendingChart() {
   };
 
   return (
-    <section className="space-y-4">
-      <div className="flex justify-between items-end">
-        <h2 className="font-headline text-lg font-semibold tracking-tight">Tren Pengeluaran</h2>
-        <span className="font-label text-[11px] font-medium text-on-surface-variant uppercase tracking-widest">7 Hari Terakhir</span>
-      </div>
-
-      {/* Legend */}
-      <div className="flex gap-4">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-error" />
-          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pengeluaran</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-secondary" />
-          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Pemasukan</span>
+    <section className="space-y-3">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h2 className="font-headline text-base font-bold tracking-tight text-on-surface">Tren 7 hari</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-error/80" />
+            <span className="text-[9px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">Keluar</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-secondary/80" />
+            <span className="text-[9px] font-semibold text-on-surface-variant/60 uppercase tracking-wider">Masuk</span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-surface-container-lowest px-6 pt-6 pb-4 rounded-[2rem] border border-outline-variant/5">
+      {/* Chart container */}
+      <div className="bg-surface-container-lowest px-4 pt-5 pb-3 rounded-2xl border border-outline-variant/6 card-spotlight">
         {!mounted || loading ? (
-          <div className="flex justify-center items-center h-[200px]">
-            <p className="text-on-surface-variant/50 text-sm animate-pulse font-medium">Menganalisis pengeluaran...</p>
+          <div className="flex justify-center items-center h-[180px]">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-[80px] w-full skeleton-wave rounded-xl" />
+              <p className="text-[10px] text-on-surface-variant/40 font-medium">Menganalisis data...</p>
+            </div>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barGap={2}>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }} barGap={2} barCategoryGap="30%">
               <XAxis
                 dataKey="dayName"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: 'var(--app-outline)', fontSize: 10, fontWeight: 700 }}
-                dy={10}
+                tick={{ fill: 'var(--app-outline)', fontSize: 9, fontWeight: 600, letterSpacing: '0.05em' }}
+                dy={8}
               />
               <YAxis hide />
               <Tooltip
-                cursor={{ fill: 'var(--app-surface-container)' }}
+                cursor={{ fill: 'var(--app-surface-container)', rx: 6, ry: 6 }}
                 content={<CustomTooltip />}
               />
-              {/* Pengeluaran — red/error */}
-              <Bar dataKey="pengeluaran" radius={[6, 6, 4, 4]} barSize={10} fill="var(--app-error)" opacity={0.85} />
-              {/* Pemasukan — green/secondary */}
-              <Bar dataKey="pemasukan"   radius={[6, 6, 4, 4]} barSize={10} fill="var(--app-secondary)" opacity={0.85} />
+              <Bar dataKey="pengeluaran" radius={[5, 5, 3, 3]} barSize={9} fill="var(--app-error)" opacity={0.75} />
+              <Bar dataKey="pemasukan"   radius={[5, 5, 3, 3]} barSize={9} fill="var(--app-secondary)" opacity={0.75} />
             </BarChart>
           </ResponsiveContainer>
         )}

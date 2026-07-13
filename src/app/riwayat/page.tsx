@@ -284,62 +284,60 @@ export default function Riwayat() {
             />
           </div>
 
-          {/* Horizontal Filters — single scrollable row */}
-          <div className="relative -mx-6">
-            {/* Right-edge fade hint */}
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-10 z-10
-              bg-gradient-to-l from-surface to-transparent" />
+          {/* Horizontal Filters — 2 rows */}
+          <div className="space-y-2 -mx-6">
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 px-6 scrollbar-hide scroll-smooth">
-              <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
-              <CategoryFilterPicker
-                value={filterCategory}
-                categories={uniqueCategories}
-                onChange={setFilterCategory}
-              />
+            {/* Row 1: Date + Category pickers */}
+            <div className="relative">
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 z-10 bg-gradient-to-l from-surface to-transparent" />
+              <div className="flex items-center gap-2 overflow-x-auto px-6 scrollbar-hide">
+                <DateFilterPicker value={dateFilter} onChange={setDateFilter} />
+                <CategoryFilterPicker
+                  value={filterCategory}
+                  categories={uniqueCategories}
+                  onChange={setFilterCategory}
+                />
+                {hasActiveFilter && (
+                  <button
+                    onClick={resetAllFilters}
+                    className="flex items-center gap-1 pl-3 pr-3.5 py-2 bg-error/8 text-error rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 hover:bg-error/15 active:scale-95 transition-all cursor-pointer border border-error/15"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>close</span>
+                    Reset
+                  </button>
+                )}
+                <div className="w-4 shrink-0" />
+              </div>
+            </div>
 
-              {/* Divider */}
-              <div className="w-px h-5 bg-outline-variant/30 shrink-0 mx-1" />
-
-              {/* Type chips */}
+            {/* Row 2: Type chips — always visible, no scroll needed */}
+            <div className="flex items-center gap-1.5 px-6">
               {(['ALL', 'income', 'expense'] as const).map((type) => {
                 const label = type === 'ALL' ? 'Semua' : type === 'income' ? 'Pemasukan' : 'Pengeluaran';
                 const icon  = type === 'ALL' ? 'filter_list' : type === 'income' ? 'south' : 'north';
                 const isActive = filterType === type;
                 const activeClass =
-                  type === 'income'  ? 'bg-secondary text-on-secondary shadow-sm' :
-                  type === 'expense' ? 'bg-primary text-on-primary shadow-sm' :
-                                       'bg-surface-container-highest text-on-surface shadow-sm';
+                  type === 'income'  ? 'bg-secondary/15 text-secondary border-secondary/20' :
+                  type === 'expense' ? 'bg-error/12 text-error border-error/20' :
+                                       'bg-on-surface/8 text-on-surface border-transparent';
                 return (
                   <button
                     key={type}
                     onClick={() => setFilterType(type)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0
-                      transition-all duration-200 active:scale-95 cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0
+                      border transition-all duration-200 active:scale-95 cursor-pointer ${
                       isActive
                         ? activeClass
-                        : 'bg-surface-container-low border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'
+                        : 'bg-transparent border-outline-variant/20 text-on-surface-variant/60 hover:bg-surface-container-high hover:text-on-surface-variant'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[13px]">{icon}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>{icon}</span>
                     {label}
                   </button>
                 );
               })}
-
-              {hasActiveFilter && (
-                <button
-                  onClick={resetAllFilters}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-error/10 text-error rounded-full text-xs font-bold whitespace-nowrap shrink-0 hover:bg-error/20 active:scale-95 transition-all cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[14px]">close</span>
-                  Hapus Filter
-                </button>
-              )}
-
-              {/* Spacer so last chip clears the fade */}
-              <div className="w-4 shrink-0" />
             </div>
+
           </div>
 
 
