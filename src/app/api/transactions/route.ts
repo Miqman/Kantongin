@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const transactionSchema = z.object({
   amount: z.number().refine((val) => val !== 0, 'amount tidak boleh 0'),
   category_id: z.string().uuid('category_id harus berupa UUID valid'),

@@ -10,7 +10,28 @@ function getLocalYM(date: Date): string {
 
 // ── Helper: YYYY-MM-DD dari waktu lokal ──────────────────────────────────────
 function getLocalDate(date: Date): string {
-  return date.toLocaleDateString('en-CA'); // "YYYY-MM-DD" lokal
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// ── Helper: Normalisasi string tanggal ke YYYY-MM-DD ─────────────────────────
+function normalizeDateStr(dStr: string): string {
+  if (!dStr) return '';
+  if (dStr.length >= 10 && dStr[4] === '-' && dStr[7] === '-') {
+    return dStr.slice(0, 10);
+  }
+  try {
+    const d = new Date(dStr);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  } catch {}
+  return dStr;
 }
 
 // ── Helper: first/last day of a month as YYYY-MM-DD strings ──────────────────
@@ -22,7 +43,7 @@ function monthBounds(year: number, month: number) {
 }
 
 export default function HeroSection() {
-  const { budgets: bdgData, isLoading: storeLoading, user } = useStore();
+  const { transactions: storeTxs, budgets: bdgData, isLoading: storeLoading, user, lastFetchedAt } = useStore();
 
   // Toggle: false = bulan ini, true = semua waktu
   const [showAllTime, setShowAllTime] = useState(false);
@@ -54,8 +75,11 @@ export default function HeroSection() {
     setTotalDanaBulanIni(mBalance);
     setTotalBulanIni(mExpense);
 
-    // Hari ini (pengeluaran)
-    const todayExp = monthTxs.filter(t => t.date === todayStr && Number(t.amount) > 0).reduce((s, t) => s + Number(t.amount), 0);
+    // Hari ini (pengeluaran: amount > 0)
+    // Gunakan allTxs yang sudah digabung & normalizeDateStr untuk hindari masalah format timestamp/timezone
+    const todayExp = allTxs
+      .filter(t => normalizeDateStr(t.date) === todayStr && Number(t.amount) > 0)
+      .reduce((s, t) => s + Number(t.amount), 0);
     setTotalHariIni(todayExp);
 
     // Growth vs bulan lalu
@@ -98,14 +122,20 @@ export default function HeroSection() {
 
       Promise.all([
         // Semua transaksi (untuk all-time balance)
-        fetch(`/api/transactions?limit=100000`).then(r => r.json()).then(j => j.data ?? []),
+        fetch(`/api/transactions?limit=100000`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
         // Transaksi bulan ini saja
-        fetch(`/api/transactions?limit=10000&start_date=${mStart}&end_date=${mEnd}`).then(r => r.json()).then(j => j.data ?? []),
+        fetch(`/api/transactions?limit=10000&start_date=${mStart}&end_date=${mEnd}`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
         // Transaksi bulan lalu saja
-        fetch(`/api/transactions?limit=10000&start_date=${pStart}&end_date=${pEnd}`).then(r => r.json()).then(j => j.data ?? []),
+        fetch(`/api/transactions?limit=10000&start_date=${pStart}&end_date=${pEnd}`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
       ])
         .then(([allTxs, monthTxs, prevTxs]) => {
-          calcSummary(allTxs, monthTxs, prevTxs, todayStr);
+          // Gabungkan dengan storeTxs agar transaksi terbaru di Zustand store (termasuk yang baru di-add) langsung terhitung
+          const txMap = new Map<string, Transaction>();
+          (allTxs as Transaction[]).forEach((t) => txMap.set(t.id, t));
+          (storeTxs as Transaction[]).forEach((t) => txMap.set(t.id, t));
+          const combinedAll = Array.from(txMap.values());
+
+          calcSummary(combinedAll, monthTxs, prevTxs, todayStr);
         })
         .catch(console.error)
         .finally(() => setSummaryLoading(false));
@@ -115,14 +145,14 @@ export default function HeroSection() {
         const all = await db.transactions.toArray();
 
         // Slice berdasarkan YYYY-MM string (tidak ada masalah timezone)
-        const monthTxs = all.filter(t => t.date.slice(0, 7) === currentYM);
-        const prevTxs = all.filter(t => t.date.slice(0, 7) === prevYM);
+        const monthTxs = all.filter(t => normalizeDateStr(t.date).slice(0, 7) === currentYM);
+        const prevTxs = all.filter(t => normalizeDateStr(t.date).slice(0, 7) === prevYM);
 
         calcSummary(all as Transaction[], monthTxs as Transaction[], prevTxs as Transaction[], todayStr);
         setSummaryLoading(false);
       }).catch(console.error);
     }
-  }, [storeLoading, user, calcSummary]);
+  }, [storeLoading, user, storeTxs, lastFetchedAt, calcSummary]);
 
   // ── Re-hitung sisa budget saat bdgData berubah ───────────────────────────────
   useEffect(() => {
