@@ -2,50 +2,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import type { Transaction } from '@/types';
-
-// ── Helper: YYYY-MM dari waktu lokal ─────────────────────────────────────────
-function getLocalYM(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// ── Helper: YYYY-MM-DD dari waktu lokal ──────────────────────────────────────
-function getLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-// ── Helper: Normalisasi string tanggal ke YYYY-MM-DD ─────────────────────────
-function normalizeDateStr(dStr: string): string {
-  if (!dStr) return '';
-  if (dStr.length >= 10 && dStr[4] === '-' && dStr[7] === '-') {
-    return dStr.slice(0, 10);
-  }
-  try {
-    const d = new Date(dStr);
-    if (!isNaN(d.getTime())) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    }
-  } catch {}
-  return dStr;
-}
-
-// ── Helper: first/last day of a month as YYYY-MM-DD strings ──────────────────
-function monthBounds(year: number, month: number) {
-  const start = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-  const lastDay = new Date(year, month + 1, 0).getDate();
-  const end = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-  return { start, end };
-}
+import { getCycleBounds, normalizeDateStr } from '@/lib/cycle';
 
 export default function HeroSection() {
-  const { transactions: storeTxs, budgets: bdgData, isLoading: storeLoading, user, lastFetchedAt } = useStore();
+  const { transactions: storeTxs, budgets: bdgData, isLoading: storeLoading, user, lastFetchedAt, paydayDate } = useStore();
 
-  // Toggle: false = bulan ini, true = semua waktu
+  // Toggle: false = siklus/bulan ini, true = semua waktu
   const [showAllTime, setShowAllTime] = useState(false);
 
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -106,14 +68,9 @@ export default function HeroSection() {
     if (storeLoading) return;
 
     const now = new Date();
-    const todayStr = getLocalDate(now);
-    const currentYM = getLocalYM(now);
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevYM = getLocalYM(prevDate);
-
-    const { start: mStart, end: mEnd } = monthBounds(now.getFullYear(), now.getMonth());
-    const { start: pStart, end: pEnd } = monthBounds(prevDate.getFullYear(), prevDate.getMonth());
+    const { start: mStart, end: mEnd, prevStart: pStart, prevEnd: pEnd } = getCycleBounds(now, paydayDate);
 
     if (user) {
       // ── Mode online: fetch langsung dari API dengan filter tanggal ──────────
@@ -123,9 +80,9 @@ export default function HeroSection() {
       Promise.all([
         // Semua transaksi (untuk all-time balance)
         fetch(`/api/transactions?limit=100000`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
-        // Transaksi bulan ini saja
+        // Transaksi siklus ini saja
         fetch(`/api/transactions?limit=10000&start_date=${mStart}&end_date=${mEnd}`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
-        // Transaksi bulan lalu saja
+        // Transaksi siklus lalu saja
         fetch(`/api/transactions?limit=10000&start_date=${pStart}&end_date=${pEnd}`, { cache: 'no-store' }).then(r => r.json()).then(j => j.data ?? []),
       ])
         .then(([allTxs, monthTxs, prevTxs]) => {
@@ -144,15 +101,21 @@ export default function HeroSection() {
       import('@/lib/dexie').then(async ({ default: db }) => {
         const all = await db.transactions.toArray();
 
-        // Slice berdasarkan YYYY-MM string (tidak ada masalah timezone)
-        const monthTxs = all.filter(t => normalizeDateStr(t.date).slice(0, 7) === currentYM);
-        const prevTxs = all.filter(t => normalizeDateStr(t.date).slice(0, 7) === prevYM);
+        // Filter berdasarkan tanggal siklus
+        const monthTxs = all.filter(t => {
+          const d = (t.date && t.date.length >= 10) ? t.date.slice(0, 10) : '';
+          return d >= mStart && d <= mEnd;
+        });
+        const prevTxs = all.filter(t => {
+          const d = (t.date && t.date.length >= 10) ? t.date.slice(0, 10) : '';
+          return d >= pStart && d <= pEnd;
+        });
 
         calcSummary(all as Transaction[], monthTxs as Transaction[], prevTxs as Transaction[], todayStr);
         setSummaryLoading(false);
       }).catch(console.error);
     }
-  }, [storeLoading, user, storeTxs, lastFetchedAt, calcSummary]);
+  }, [storeLoading, user, storeTxs, lastFetchedAt, calcSummary, paydayDate]);
 
   // ── Re-hitung sisa budget saat bdgData berubah ───────────────────────────────
   useEffect(() => {
@@ -172,6 +135,8 @@ export default function HeroSection() {
   const displayDana = showAllTime ? totalDanaAllTime : totalDanaBulanIni;
   const growth = showAllTime ? null : growthBulanIni;
 
+  const cycle = getCycleBounds(new Date(), paydayDate);
+
   return (
     <>
       {/* Hero Section: Total Balance */}
@@ -179,17 +144,21 @@ export default function HeroSection() {
         {/* Label + toggle */}
         <div className="relative z-10 flex items-center gap-2">
           <p className="font-label text-[10px] font-semibold tracking-[0.12em] uppercase text-on-surface-variant/70">
-            {showAllTime ? 'Semua waktu' : 'Bulan ini'}
+            {showAllTime
+              ? 'Semua waktu'
+              : paydayDate === 1
+                ? 'Bulan ini'
+                : `Siklus ${cycle.label}`}
           </p>
           <button
             onClick={() => setShowAllTime(prev => !prev)}
-            title={showAllTime ? 'Tampilkan bulan ini' : 'Tampilkan semua waktu'}
+            title={showAllTime ? 'Tampilkan siklus ini' : 'Tampilkan semua waktu'}
             className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide border border-outline-variant/20 text-on-surface-variant/60 hover:bg-surface-container-high hover:text-on-surface hover:border-outline-variant/40 transition-all duration-200 active:scale-95"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
               {showAllTime ? 'calendar_month' : 'all_inclusive'}
             </span>
-            {showAllTime ? 'Bulan ini' : 'Semua'}
+            {showAllTime ? (paydayDate === 1 ? 'Bulan ini' : 'Siklus ini') : 'Semua'}
           </button>
         </div>
 
@@ -221,7 +190,7 @@ export default function HeroSection() {
 
         {!loading && !showAllTime && (
           <p className="relative z-10 text-[10px] text-on-surface-variant/40 font-medium">
-            dibandingkan bulan lalu
+            dibandingkan {paydayDate === 1 ? 'bulan lalu' : 'siklus sebelumnya'}
           </p>
         )}
       </section>
@@ -245,7 +214,7 @@ export default function HeroSection() {
           </div>
         </div>
 
-        {/* Total Bulan Ini */}
+        {/* Total Siklus/Bulan Ini */}
         <div className="col-span-1 p-4 rounded-2xl bg-surface-container-high flex flex-col justify-between gap-4 border border-outline-variant/10 card-spotlight transition-all duration-200">
           <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
             <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
@@ -253,7 +222,9 @@ export default function HeroSection() {
             </span>
           </div>
           <div>
-            <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">Bulan ini</p>
+            <p className="font-label text-[9px] font-semibold text-on-surface-variant/60 tracking-[0.1em] uppercase mb-1">
+              {paydayDate === 1 ? 'Bulan ini' : 'Siklus ini'}
+            </p>
             {loading ? (
               <div className="h-5 w-16 skeleton-wave rounded" />
             ) : (

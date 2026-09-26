@@ -50,9 +50,10 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { full_name, avatar_url } = body as {
+    const { full_name, avatar_url, payday_date } = body as {
       full_name?: string;
       avatar_url?: string;
+      payday_date?: number;
     };
 
     // Merge with existing metadata so we don't overwrite unrelated fields
@@ -61,6 +62,10 @@ export async function PATCH(req: Request) {
     };
     if (full_name !== undefined) updatedMetadata.full_name = full_name.trim();
     if (avatar_url !== undefined) updatedMetadata.avatar_url = avatar_url;
+    if (payday_date !== undefined) {
+      const p = Math.max(1, Math.min(31, Math.floor(Number(payday_date))));
+      updatedMetadata.payday_date = p;
+    }
 
     const { data, error: updateError } = await supabase.auth.updateUser({
       data: updatedMetadata,

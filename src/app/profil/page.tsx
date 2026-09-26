@@ -11,6 +11,7 @@ import BudgetCard from '@/components/BudgetCard';
 import { useStore } from '@/store/useStore';
 import ThemePicker from '@/components/ThemePicker';
 import EditProfileModal from '@/components/EditProfileModal';
+import PaydaySetting from '@/components/PaydaySetting';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
@@ -474,9 +475,12 @@ export default function Profil() {
           </h2>
           <div className="bg-surface-container-low rounded-[1.5rem] overflow-hidden">
             {/* Theme Picker */}
-            <div className="p-5">
+            <div className="p-5 border-b border-outline-variant/5">
               <ThemePicker />
             </div>
+
+            {/* Siklus Gajian */}
+            <PaydaySetting />
 
             <Link href="/profil/categories" className="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group border-b border-outline-variant/5">
               <div className="flex items-center gap-4">

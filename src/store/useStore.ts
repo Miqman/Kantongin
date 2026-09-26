@@ -9,7 +9,6 @@ import type {
   Category,
   TransactionInput,
   CategoryInput,
-  BudgetInput,
   BudgetPeriod,
 } from '@/types';
 
@@ -43,7 +42,9 @@ interface AppState {
   addCategory: (data: CategoryInput) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
   updateCategory: (id: string, data: Partial<CategoryInput>) => Promise<void>;
-  updateProfile: (data: { full_name?: string; avatar_url?: string }) => Promise<void>;
+  paydayDate: number;
+  setPaydayDate: (date: number) => Promise<void>;
+  updateProfile: (data: { full_name?: string; avatar_url?: string; payday_date?: number }) => Promise<void>;
   setUser: (user: AppUser | null) => void;
 }
 
@@ -60,6 +61,14 @@ const DEFAULT_CATEGORIES: CategoryInput[] = [
   { name: 'Gaji', icon: 'payments', color: '#4caf50' },
 ];
 
+const getInitialPaydayDate = (): number => {
+  if (typeof window !== 'undefined') {
+    const val = localStorage.getItem('payday_date');
+    if (val && !isNaN(Number(val))) return Math.max(1, Math.min(31, Number(val)));
+  }
+  return 27;
+};
+
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useStore = create<AppState>((set, get) => ({
@@ -73,11 +82,19 @@ export const useStore = create<AppState>((set, get) => ({
   error: null,
   user: null,
   lastFetchedAt: null,
+  paydayDate: getInitialPaydayDate(),
 
   checkAuth: async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    set({ user: user as AppUser | null });
+    let payday = get().paydayDate;
+    if (user?.user_metadata?.payday_date) {
+      payday = Math.max(1, Math.min(31, Number(user.user_metadata.payday_date) || 27));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('payday_date', String(payday));
+      }
+    }
+    set({ user: user as AppUser | null, paydayDate: payday });
   },
 
   // ── READ ──────────────────────────────────────────────────────────────────
@@ -577,6 +594,18 @@ export const useStore = create<AppState>((set, get) => ({
       set({ user: prevUser });
       logger.error('Update Profile Error:', error);
       throw error;
+    }
+  },
+
+  setPaydayDate: async (date: number) => {
+    const valid = Math.max(1, Math.min(31, Math.floor(date)));
+    set({ paydayDate: valid });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('payday_date', String(valid));
+    }
+    const { user, updateProfile } = get();
+    if (user) {
+      await updateProfile({ payday_date: valid });
     }
   },
 }));

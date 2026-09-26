@@ -49,3 +49,6 @@ CLAUDE.md
 .env*.local
 .claude
 .agents
+
+# Graphify
+graphify-out/
