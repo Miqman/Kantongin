@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  import { appStore } from '$lib/stores/app.svelte';
-  import { toast } from '$lib/stores/toast.svelte';
-  import TopAppBar from '$lib/components/common/TopAppBar.svelte';
-  import BottomNavBar from '$lib/components/common/BottomNavBar.svelte';
-  import GoogleSheetsCard from '$lib/components/settings/GoogleSheetsCard.svelte';
-  import BudgetCard from '$lib/components/settings/BudgetCard.svelte';
-  import ThemePicker from '$lib/components/settings/ThemePicker.svelte';
-  import PaydaySetting from '$lib/components/settings/PaydaySetting.svelte';
-  import EditProfileModal from '$lib/components/settings/EditProfileModal.svelte';
-  import { db } from '$lib/db/dexie';
-  import type { Transaction } from '$lib/types';
+  import { goto } from "$app/navigation";
+  import { appStore } from "$lib/stores/app.svelte";
+  import { toast } from "$lib/stores/toast.svelte";
+  import TopAppBar from "$lib/components/common/TopAppBar.svelte";
+  import BottomNavBar from "$lib/components/common/BottomNavBar.svelte";
+  import GoogleSheetsCard from "$lib/components/settings/GoogleSheetsCard.svelte";
+  import BudgetCard from "$lib/components/settings/BudgetCard.svelte";
+  import ThemePicker from "$lib/components/settings/ThemePicker.svelte";
+  import PaydaySetting from "$lib/components/settings/PaydaySetting.svelte";
+  import EditProfileModal from "$lib/components/settings/EditProfileModal.svelte";
+  import { db } from "$lib/db/dexie";
+  import type { Transaction } from "$lib/types";
 
   let isLoggingOut = $state(false);
   let isExportingCsv = $state(false);
@@ -18,34 +18,36 @@
   let isEditModalOpen = $state(false);
   let isAvatarLightboxOpen = $state(false);
 
-  let dateRangeType = $state<'all' | 'this_month' | 'last_month' | 'last_30_days' | 'custom'>('all');
-  let customStartDate = $state('');
-  let customEndDate = $state('');
+  let dateRangeType = $state<
+    "all" | "this_month" | "last_month" | "last_30_days" | "custom"
+  >("all");
+  let customStartDate = $state("");
+  let customEndDate = $state("");
 
   const avatarUrl = $derived(
-    appStore.user?.user_metadata?.avatar_url as string | undefined
+    appStore.user?.user_metadata?.avatar_url as string | undefined,
   );
 
   const displayName = $derived(
     (appStore.user?.user_metadata?.full_name as string | undefined) ??
-    appStore.user?.email?.split('@')[0] ??
-    'Pengguna'
+      appStore.user?.email?.split("@")[0] ??
+      "Pengguna",
   );
 
   function getInitials(email: string): string {
-    return email ? email.charAt(0).toUpperCase() : 'U';
+    return email ? email.charAt(0).toUpperCase() : "U";
   }
 
   async function handleLogout() {
     isLoggingOut = true;
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch("/api/auth/logout", { method: "POST" });
       appStore.setUser(null);
-      toast.success('Berhasil keluar');
-      goto('/');
+      toast.success("Berhasil keluar");
+      goto("/");
     } catch (err) {
-      console.error('Logout error:', err);
-      toast.error('Gagal keluar');
+      console.error("Logout error:", err);
+      toast.error("Gagal keluar");
     } finally {
       isLoggingOut = false;
     }
@@ -55,24 +57,24 @@
     let start: string | null = null;
     let end: string | null = null;
     const today = new Date();
-    const toISO = (d: Date) => d.toLocaleDateString('en-CA');
+    const toISO = (d: Date) => d.toLocaleDateString("en-CA");
 
-    if (dateRangeType === 'this_month') {
+    if (dateRangeType === "this_month") {
       const y = today.getFullYear();
       const m = today.getMonth();
       start = toISO(new Date(y, m, 1));
       end = toISO(new Date(y, m + 1, 0));
-    } else if (dateRangeType === 'last_month') {
+    } else if (dateRangeType === "last_month") {
       const y = today.getFullYear();
       const m = today.getMonth();
       start = toISO(new Date(y, m - 1, 1));
       end = toISO(new Date(y, m, 0));
-    } else if (dateRangeType === 'last_30_days') {
+    } else if (dateRangeType === "last_30_days") {
       const past = new Date(today);
       past.setDate(today.getDate() - 30);
       start = toISO(past);
       end = toISO(today);
-    } else if (dateRangeType === 'custom') {
+    } else if (dateRangeType === "custom") {
       start = customStartDate || null;
       end = customEndDate || null;
     }
@@ -83,13 +85,15 @@
   async function fetchTransactionsForExport(): Promise<Transaction[] | null> {
     const { start, end } = getDateRangeParams();
 
-    if (dateRangeType === 'custom') {
+    if (dateRangeType === "custom") {
       if (!start || !end) {
-        toast.error('Silakan tentukan tanggal mulai dan selesai.');
+        toast.error("Silakan tentukan tanggal mulai dan selesai.");
         return null;
       }
       if (start > end) {
-        toast.error('Tanggal mulai tidak boleh lebih besar dari tanggal selesai.');
+        toast.error(
+          "Tanggal mulai tidak boleh lebih besar dari tanggal selesai.",
+        );
         return null;
       }
     }
@@ -101,7 +105,7 @@
         if (end) url += `&end_date=${end}`;
 
         const res = await fetch(url);
-        if (!res.ok) throw new Error('Gagal mengambil data dari server');
+        if (!res.ok) throw new Error("Gagal mengambil data dari server");
         const json = await res.json();
         return json.data ?? [];
       } else {
@@ -117,11 +121,13 @@
         if (start) filtered = filtered.filter((tx) => tx.date >= start);
         if (end) filtered = filtered.filter((tx) => tx.date <= end);
 
-        return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return filtered.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
       }
     } catch (err) {
-      console.error('Error fetching transactions for export:', err);
-      toast.error('Gagal mengambil data transaksi untuk diekspor.');
+      console.error("Error fetching transactions for export:", err);
+      toast.error("Gagal mengambil data transaksi untuk diekspor.");
       return null;
     }
   }
@@ -133,38 +139,47 @@
       if (!dataToExport) return;
 
       if (dataToExport.length === 0) {
-        toast.error('Tidak ada data transaksi pada rentang tanggal ini.');
+        toast.error("Tidak ada data transaksi pada rentang tanggal ini.");
         return;
       }
 
-      const header = ['Tanggal', 'Kategori', 'Catatan', 'Jumlah (Rp)', 'Tipe'];
+      const header = ["Tanggal", "Kategori", "Catatan", "Jumlah (Rp)", "Tipe"];
       const rows = dataToExport.map((t) => [
-        new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-        t.category?.name ?? 'Tanpa Kategori',
-        t.note ?? '',
+        new Date(t.date).toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        t.category?.name ?? "Tanpa Kategori",
+        t.note ?? "",
         Math.abs(Number(t.amount)),
-        Number(t.amount) < 0 ? 'Pemasukan' : 'Pengeluaran',
+        Number(t.amount) < 0 ? "Pemasukan" : "Pengeluaran",
       ]);
 
       const csvContent =
-        '\uFEFF' +
+        "\uFEFF" +
         [header, ...rows]
-          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-          .join('\n');
+          .map((row) =>
+            row
+              .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+              .join(","),
+          )
+          .join("\n");
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       const { start, end } = getDateRangeParams();
-      const filenameSuffix = dateRangeType === 'all' ? 'semua' : `${start}_ke_${end}`;
+      const filenameSuffix =
+        dateRangeType === "all" ? "semua" : `${start}_ke_${end}`;
       link.href = url;
       link.download = `uangmu-transaksi-${filenameSuffix}.csv`;
       link.click();
       URL.revokeObjectURL(url);
-      toast.success('CSV berhasil diunduh!');
+      toast.success("CSV berhasil diunduh!");
     } catch (err) {
-      console.error('Export CSV error:', err);
-      toast.error('Gagal mengekspor CSV.');
+      console.error("Export CSV error:", err);
+      toast.error("Gagal mengekspor CSV.");
     } finally {
       isExportingCsv = false;
     }
@@ -177,38 +192,46 @@
       if (!dataToExport) return;
 
       if (dataToExport.length === 0) {
-        toast.error('Tidak ada data transaksi pada rentang tanggal ini.');
+        toast.error("Tidak ada data transaksi pada rentang tanggal ini.");
         return;
       }
 
-      const { default: jsPDF } = await import('jspdf');
-      const { default: autoTable } = await import('jspdf-autotable');
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
 
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
       doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Dompetku – Laporan Transaksi', 14, 18);
+      doc.setFont("helvetica", "bold");
+      doc.text("Dompetku – Laporan Transaksi", 14, 18);
 
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(120);
 
       const { start, end } = getDateRangeParams();
-      let rangeText = 'Semua Waktu';
-      if (dateRangeType === 'this_month') rangeText = 'Bulan Ini';
-      else if (dateRangeType === 'last_month') rangeText = 'Bulan Lalu';
-      else if (dateRangeType === 'last_30_days') rangeText = '30 Hari Terakhir';
-      else if (dateRangeType === 'custom' && start && end) {
+      let rangeText = "Semua Waktu";
+      if (dateRangeType === "this_month") rangeText = "Bulan Ini";
+      else if (dateRangeType === "last_month") rangeText = "Bulan Lalu";
+      else if (dateRangeType === "last_30_days") rangeText = "30 Hari Terakhir";
+      else if (dateRangeType === "custom" && start && end) {
         const formatIndo = (dStr: string) =>
-          new Date(dStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+          new Date(dStr).toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          });
         rangeText = `${formatIndo(start)} - ${formatIndo(end)}`;
       }
 
       doc.text(
-        `Periode: ${rangeText}   |   Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+        `Periode: ${rangeText}   |   Dicetak pada: ${new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}`,
         14,
-        25
+        25,
       );
       doc.setTextColor(0);
 
@@ -221,26 +244,37 @@
 
       doc.setFontSize(9);
       doc.text(
-        `Total Pemasukan: Rp ${totalPemasukan.toLocaleString('id-ID')}   |   Total Pengeluaran: Rp ${totalPengeluaran.toLocaleString('id-ID')}`,
+        `Total Pemasukan: Rp ${totalPemasukan.toLocaleString("id-ID")}   |   Total Pengeluaran: Rp ${totalPengeluaran.toLocaleString("id-ID")}`,
         14,
-        31
+        31,
       );
 
-      const head = [['Tanggal', 'Kategori', 'Catatan', 'Tipe', 'Jumlah (Rp)']];
+      const head = [["Tanggal", "Kategori", "Catatan", "Tipe", "Jumlah (Rp)"]];
       const body = [...dataToExport]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map((t) => [
-          new Date(t.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-          t.category?.name ?? 'Tanpa Kategori',
-          t.note ?? '-',
-          Number(t.amount) < 0 ? 'Pemasukan' : 'Pengeluaran',
-          Math.abs(Number(t.amount)).toLocaleString('id-ID'),
+          new Date(t.date).toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          t.category?.name ?? "Tanpa Kategori",
+          t.note ?? "-",
+          Number(t.amount) < 0 ? "Pemasukan" : "Pengeluaran",
+          Math.abs(Number(t.amount)).toLocaleString("id-ID"),
         ]);
 
       const foot = [
         [
-          { content: 'TOTAL PENGELUARAN', colSpan: 4, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
-          { content: `Rp ${totalPengeluaran.toLocaleString('id-ID')}`, styles: { halign: 'right' as const, fontStyle: 'bold' as const } },
+          {
+            content: "TOTAL PENGELUARAN",
+            colSpan: 4,
+            styles: { halign: "right" as const, fontStyle: "bold" as const },
+          },
+          {
+            content: `Rp ${totalPengeluaran.toLocaleString("id-ID")}`,
+            styles: { halign: "right" as const, fontStyle: "bold" as const },
+          },
         ],
       ];
 
@@ -249,20 +283,29 @@
         body,
         foot,
         startY: 36,
-        showFoot: 'lastPage',
+        showFoot: "lastPage",
         styles: { fontSize: 8, cellPadding: 2.5 },
-        headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: 255,
+          fontStyle: "bold",
+        },
         alternateRowStyles: { fillColor: [245, 245, 250] },
-        footStyles: { fillColor: [232, 232, 250], textColor: [50, 50, 120], fontSize: 8.5 },
-        columnStyles: { 4: { halign: 'right' } },
+        footStyles: {
+          fillColor: [232, 232, 250],
+          textColor: [50, 50, 120],
+          fontSize: 8.5,
+        },
+        columnStyles: { 4: { halign: "right" } },
       });
 
-      const filenameSuffix = dateRangeType === 'all' ? 'semua' : `${start}_ke_${end}`;
+      const filenameSuffix =
+        dateRangeType === "all" ? "semua" : `${start}_ke_${end}`;
       doc.save(`dompetku-transaksi-${filenameSuffix}.pdf`);
-      toast.success('PDF berhasil diunduh!');
+      toast.success("PDF berhasil diunduh!");
     } catch (err) {
-      console.error('Export PDF error:', err);
-      toast.error('Gagal mengekspor PDF.');
+      console.error("Export PDF error:", err);
+      toast.error("Gagal mengekspor PDF.");
     } finally {
       isExportingPdf = false;
     }
@@ -271,27 +314,40 @@
 
 <TopAppBar />
 
-<main class="max-w-2xl mx-auto px-6 pt-8 pb-32 space-y-10">
+<main class="max-w-2xl mx-auto px-6 pt-8 pb-24 space-y-10">
   <!-- Profile Header -->
   <section class="flex flex-col items-center text-center space-y-4">
     <div class="relative">
-      <div class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary">
+      <div
+        class="w-24 h-24 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary"
+      >
         <button
           type="button"
-          onclick={() => { if (avatarUrl) isAvatarLightboxOpen = true; }}
-          class="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center relative {avatarUrl ? 'cursor-zoom-in' : 'cursor-default'}"
-          title={avatarUrl ? 'Lihat foto profil' : undefined}
+          onclick={() => {
+            if (avatarUrl) isAvatarLightboxOpen = true;
+          }}
+          class="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center relative {avatarUrl
+            ? 'cursor-zoom-in'
+            : 'cursor-default'}"
+          title={avatarUrl ? "Lihat foto profil" : undefined}
         >
           {#if appStore.user}
             {#if avatarUrl}
-              <img src={avatarUrl} alt="Foto profil" class="w-full h-full object-cover" />
+              <img
+                src={avatarUrl}
+                alt="Foto profil"
+                class="w-full h-full object-cover"
+              />
             {:else}
               <span class="text-on-surface font-extrabold text-4xl select-none">
-                {getInitials(appStore.user.email ?? 'U')}
+                {getInitials(appStore.user.email ?? "U")}
               </span>
             {/if}
           {:else}
-            <span class="material-symbols-outlined text-on-surface-variant text-5xl">person</span>
+            <span
+              class="material-symbols-outlined text-on-surface-variant text-5xl"
+              >person</span
+            >
           {/if}
         </button>
       </div>
@@ -310,22 +366,33 @@
 
     <div>
       {#if appStore.user}
-        <h1 class="text-3xl font-headline font-extrabold tracking-tight text-on-surface">
+        <h1
+          class="text-3xl font-headline font-extrabold tracking-tight text-on-surface"
+        >
           {displayName}
         </h1>
-        <p class="text-on-surface-variant font-medium mt-1">{appStore.user.email}</p>
-        <span class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest">
-          <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+        <p class="text-on-surface-variant font-medium mt-1">
+          {appStore.user.email}
+        </p>
+        <span
+          class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-widest"
+        >
+          <span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"
+          ></span>
           Cloud Sync Aktif
         </span>
       {:else}
-        <h1 class="text-3xl font-headline font-extrabold tracking-tight text-on-surface">
+        <h1
+          class="text-3xl font-headline font-extrabold tracking-tight text-on-surface"
+        >
           Mode Tamu
         </h1>
         <p class="text-on-surface-variant font-medium mt-1 text-sm">
           Data tersimpan di perangkat ini saja
         </p>
-        <span class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-outline-variant/20 text-on-surface-variant text-xs font-bold uppercase tracking-widest">
+        <span
+          class="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-outline-variant/20 text-on-surface-variant text-xs font-bold uppercase tracking-widest"
+        >
           <span class="material-symbols-outlined text-xs">device_unknown</span>
           Lokal Saja
         </span>
@@ -335,12 +402,19 @@
 
   <!-- Guest CTA Banner -->
   {#if !appStore.user}
-    <section class="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-3xl p-6 text-center space-y-4">
-      <span class="material-symbols-outlined text-primary text-4xl">cloud_upload</span>
+    <section
+      class="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-3xl p-6 text-center space-y-4"
+    >
+      <span class="material-symbols-outlined text-primary text-4xl"
+        >cloud_upload</span
+      >
       <div>
-        <h2 class="font-headline font-bold text-lg text-on-surface">Backup Data ke Cloud</h2>
+        <h2 class="font-headline font-bold text-lg text-on-surface">
+          Backup Data ke Cloud
+        </h2>
         <p class="text-on-surface-variant text-sm mt-1">
-          Buat akun gratis untuk menyimpan data secara aman dan sinkron di semua perangkat.
+          Buat akun gratis untuk menyimpan data secara aman dan sinkron di semua
+          perangkat.
         </p>
       </div>
       <div class="flex gap-3 justify-center">
@@ -370,7 +444,9 @@
 
   <!-- Preferences -->
   <section class="space-y-6">
-    <h2 class="text-xs font-label font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 ml-2">
+    <h2
+      class="text-xs font-label font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 ml-2"
+    >
       Preferensi
     </h2>
     <div class="bg-surface-container-low rounded-[1.5rem] overflow-hidden">
@@ -385,12 +461,16 @@
         class="p-5 flex items-center justify-between hover:bg-surface-container-high transition-colors cursor-pointer group border-b border-outline-variant/5"
       >
         <div class="flex items-center gap-4">
-          <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">
+          <span
+            class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors"
+          >
             category
           </span>
           <span class="font-medium">Kelola Kategori</span>
         </div>
-        <span class="material-symbols-outlined text-on-surface-variant text-sm group-hover:translate-x-0.5 transition-transform">
+        <span
+          class="material-symbols-outlined text-on-surface-variant text-sm group-hover:translate-x-0.5 transition-transform"
+        >
           chevron_right
         </span>
       </a>
@@ -399,28 +479,29 @@
 
   <!-- Data Operations -->
   <section class="space-y-6">
-    <h2 class="text-xs font-label font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 ml-2">
+    <h2
+      class="text-xs font-label font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 ml-2"
+    >
       Operasi Data
     </h2>
 
-    <div class="bg-surface-container-low rounded-[1.5rem] p-5 border border-outline-variant/10 space-y-4">
+    <div
+      class="bg-surface-container-low rounded-[1.5rem] p-5 border border-outline-variant/10 space-y-4"
+    >
       <div class="flex items-center gap-2 text-on-surface-variant ml-1">
         <span class="material-symbols-outlined text-lg">calendar_month</span>
-        <span class="text-xs font-bold uppercase tracking-wider">Rentang Tanggal Ekspor</span>
+        <span class="text-xs font-bold uppercase tracking-wider"
+          >Rentang Tanggal Ekspor</span
+        >
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-        {#each [
-          { value: 'all', label: 'Semua Waktu' },
-          { value: 'this_month', label: 'Bulan Ini' },
-          { value: 'last_month', label: 'Bulan Lalu' },
-          { value: 'last_30_days', label: '30 Hari' },
-          { value: 'custom', label: 'Kustom' },
-        ] as opt}
+        {#each [{ value: "all", label: "Semua Waktu" }, { value: "this_month", label: "Bulan Ini" }, { value: "last_month", label: "Bulan Lalu" }, { value: "last_30_days", label: "30 Hari" }, { value: "custom", label: "Kustom" }] as opt}
           <button
             type="button"
             onclick={() => (dateRangeType = opt.value as any)}
-            class="px-3 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer text-center {dateRangeType === opt.value
+            class="px-3 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer text-center {dateRangeType ===
+            opt.value
               ? 'bg-primary text-on-primary border-primary shadow-md'
               : 'bg-surface-container hover:bg-surface-container-highest border-outline-variant/10 text-on-surface-variant'}"
           >
@@ -429,10 +510,15 @@
         {/each}
       </div>
 
-      {#if dateRangeType === 'custom'}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-in fade-in duration-200">
+      {#if dateRangeType === "custom"}
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-in fade-in duration-200"
+        >
           <div class="space-y-1">
-            <label for="custom-start-date" class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1 block">
+            <label
+              for="custom-start-date"
+              class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1 block"
+            >
               Tanggal Mulai
             </label>
             <input
@@ -443,7 +529,10 @@
             />
           </div>
           <div class="space-y-1">
-            <label for="custom-end-date" class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1 block">
+            <label
+              for="custom-end-date"
+              class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70 ml-1 block"
+            >
               Tanggal Selesai
             </label>
             <input
@@ -471,10 +560,16 @@
         disabled={isExportingCsv}
         class="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest active:scale-95 transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer disabled:opacity-50"
       >
-        <span class="material-symbols-outlined text-on-surface-variant text-lg {isExportingCsv ? 'animate-spin' : ''}">
-          {isExportingCsv ? 'progress_activity' : 'csv'}
+        <span
+          class="material-symbols-outlined text-on-surface-variant text-lg {isExportingCsv
+            ? 'animate-spin'
+            : ''}"
+        >
+          {isExportingCsv ? "progress_activity" : "csv"}
         </span>
-        <span class="font-medium text-sm">{isExportingCsv ? 'Mengekspor...' : 'Export CSV'}</span>
+        <span class="font-medium text-sm"
+          >{isExportingCsv ? "Mengekspor..." : "Export CSV"}</span
+        >
       </button>
 
       <button
@@ -483,10 +578,16 @@
         disabled={isExportingPdf}
         class="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest active:scale-95 transition-all py-4 rounded-full border border-outline-variant/10 cursor-pointer disabled:opacity-50"
       >
-        <span class="material-symbols-outlined text-on-surface-variant text-lg {isExportingPdf ? 'animate-spin' : ''}">
-          {isExportingPdf ? 'progress_activity' : 'picture_as_pdf'}
+        <span
+          class="material-symbols-outlined text-on-surface-variant text-lg {isExportingPdf
+            ? 'animate-spin'
+            : ''}"
+        >
+          {isExportingPdf ? "progress_activity" : "picture_as_pdf"}
         </span>
-        <span class="font-medium text-sm">{isExportingPdf ? 'Mengekspor...' : 'Export PDF'}</span>
+        <span class="font-medium text-sm"
+          >{isExportingPdf ? "Mengekspor..." : "Export PDF"}</span
+        >
       </button>
     </div>
   </section>
@@ -502,12 +603,14 @@
       >
         <span class="material-symbols-outlined">logout</span>
         <span class="font-bold tracking-wide">
-          {isLoggingOut ? 'Keluar...' : 'Keluar dari Akun'}
+          {isLoggingOut ? "Keluar..." : "Keluar dari Akun"}
         </span>
       </button>
     {/if}
-    <p class="text-center text-[10px] text-on-surface-variant/40 mt-4 uppercase tracking-widest font-label">
-      Dompetku v1.0 • {appStore.user ? 'Cloud Mode' : 'Guest Mode'}
+    <p
+      class="text-center text-[10px] text-on-surface-variant/40 mt-4 uppercase tracking-widest font-label"
+    >
+      Dompetku v1.0 • {appStore.user ? "Cloud Mode" : "Guest Mode"}
     </p>
   </footer>
 </main>
@@ -527,7 +630,9 @@
     onclick={() => (isAvatarLightboxOpen = false)}
     role="button"
     tabindex="0"
-    onkeydown={(e) => { if (e.key === 'Escape') isAvatarLightboxOpen = false; }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") isAvatarLightboxOpen = false;
+    }}
   >
     <button
       type="button"
@@ -542,8 +647,11 @@
       onclick={(e) => e.stopPropagation()}
       role="presentation"
     >
-      <img src={avatarUrl} alt="Foto profil besar" class="w-full h-full object-cover" />
+      <img
+        src={avatarUrl}
+        alt="Foto profil besar"
+        class="w-full h-full object-cover"
+      />
     </div>
   </div>
 {/if}
-
