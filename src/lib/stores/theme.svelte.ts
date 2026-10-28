@@ -164,16 +164,29 @@ class ThemeStore {
     this.applyThemeClass(themeId);
   }
 
-  async fetchEntitlements() {
-    try {
-      const res = await fetch('/api/profile');
-      if (res.ok) {
-        const data = await res.json();
-        this.allowedExclusiveIds = data.allowed_themes ?? [];
+  private hasFetchedEntitlements = false;
+  private fetchInFlight: Promise<void> | null = null;
+
+  async fetchEntitlements(force = false): Promise<void> {
+    if (!force && this.hasFetchedEntitlements) return;
+    if (this.fetchInFlight) return this.fetchInFlight;
+
+    this.fetchInFlight = (async () => {
+      try {
+        const res = await fetch('/api/profile');
+        if (res.ok) {
+          const data = await res.json();
+          this.allowedExclusiveIds = data.allowed_themes ?? [];
+          this.hasFetchedEntitlements = true;
+        }
+      } catch {
+        // Ignored
+      } finally {
+        this.fetchInFlight = null;
       }
-    } catch {
-      // Ignored
-    }
+    })();
+
+    return this.fetchInFlight;
   }
 }
 
