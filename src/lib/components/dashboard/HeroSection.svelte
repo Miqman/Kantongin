@@ -68,24 +68,33 @@
   $effect(() => {
     if (appStore.isLoading) return;
 
+    // Track reactive dependencies so summary recomputes on transaction/budget changes
+    appStore.transactions;
+    appStore.budgets;
+    appStore.paydayDate;
+    appStore.user;
+
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const { start: mStart, end: mEnd, prevStart: pStart, prevEnd: pEnd } = getCycleBounds(now, appStore.paydayDate);
 
     if (appStore.user) {
       summaryLoading = true;
-      Promise.all([
-        fetch('/api/transactions?limit=100000').then((r) => r.json()).then((j) => j.data ?? []),
-        fetch(`/api/transactions?limit=10000&start_date=${mStart}&end_date=${mEnd}`).then((r) => r.json()).then((j) => j.data ?? []),
-        fetch(`/api/transactions?limit=10000&start_date=${pStart}&end_date=${pEnd}`).then((r) => r.json()).then((j) => j.data ?? []),
-      ])
-        .then(([allTxs, monthTxs, prevTxs]) => {
-          const txMap = new Map<string, Transaction>();
-          (allTxs as Transaction[]).forEach((t) => txMap.set(t.id, t));
-          appStore.transactions.forEach((t) => txMap.set(t.id, t));
-          const combinedAll = Array.from(txMap.values());
+      fetch(
+        `/api/transactions/summary?start_date=${mStart}&end_date=${mEnd}&prev_start_date=${pStart}&prev_end_date=${pEnd}&today=${todayStr}`
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          totalDanaAllTime = data.totalDanaAllTime ?? 0;
+          totalDanaBulanIni = data.totalDanaBulanIni ?? 0;
+          totalBulanIni = data.totalBulanIni ?? 0;
+          totalHariIni = data.totalHariIni ?? 0;
+          growthBulanIni = data.growthBulanIni ?? 0;
 
-          calcSummary(combinedAll, monthTxs, prevTxs, todayStr);
+          const monthBudget = appStore.budgets
+            .filter((b) => b.period === 'monthly')
+            .reduce((s, b) => s + Number(b.limit_amount || 0), 0);
+          sisaBudget = monthBudget - totalBulanIni;
         })
         .catch(console.error)
         .finally(() => {
