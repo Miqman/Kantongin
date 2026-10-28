@@ -41,7 +41,22 @@ export const GET: RequestHandler = async (event) => {
     if (typeParam === 'income') query = query.lt('amount', 0);
     else if (typeParam === 'expense') query = query.gt('amount', 0);
     if (categoryId) query = query.eq('category_id', categoryId);
-    if (search) query = query.ilike('note', `%${search}%`);
+    if (search) {
+      const cleanSearch = search.replace(/[,()]/g, '').trim();
+      if (cleanSearch) {
+        const { data: matchedCats } = await event.locals.supabase
+          .from('categories')
+          .select('id')
+          .ilike('name', `%${cleanSearch}%`);
+
+        const catIds = (matchedCats ?? []).map((c: { id: string }) => c.id);
+        if (catIds.length > 0) {
+          query = query.or(`note.ilike.%${cleanSearch}%,category_id.in.(${catIds.join(',')})`);
+        } else {
+          query = query.ilike('note', `%${cleanSearch}%`);
+        }
+      }
+    }
     if (cursor) query = query.lt('created_at', cursor);
 
     const { data: transactions, error: dbError } = await query;

@@ -8,54 +8,145 @@
   import { historyFilters, dateFilterToRange } from '$lib/stores/filters.svelte';
   import { appStore } from '$lib/stores/app.svelte';
   import { toast } from '$lib/stores/toast.svelte';
+  import db from '$lib/db/dexie';
   import type { Transaction } from '$lib/types';
 
-  let localSearch = $state('');
-  let debouncedSearch = $state('');
+  // Page-level transaction state for history view
+  let transactions = $state<Transaction[]>([]);
+  let isLoading = $state(true);
+  let isLoadingMore = $state(false);
+  let hasMore = $state(false);
+  let nextCursor = $state<string | null>(null);
 
-  let debounceTimer: ReturnType<typeof setTimeout>;
+  // Debounced search query to prevent spamming server API on every keystroke
+  let debouncedSearch = $state(historyFilters.searchQuery);
+
   $effect(() => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      debouncedSearch = localSearch.trim().toLowerCase();
+    const q = historyFilters.searchQuery;
+    if (q === '') {
+      debouncedSearch = '';
+      return;
+    }
+    const timer = setTimeout(() => {
+      debouncedSearch = q;
     }, 300);
+    return () => clearTimeout(timer);
   });
 
-  // Filtered transactions computed reactively
-  let filteredTransactions = $derived.by(() => {
-    let list = appStore.transactions;
-
-    // Type filter
-    if (historyFilters.type === 'income') {
-      list = list.filter((t) => Number(t.amount) < 0);
-    } else if (historyFilters.type === 'expense') {
-      list = list.filter((t) => Number(t.amount) > 0);
-    }
-
-    // Category filter
-    if (historyFilters.categoryId !== 'ALL') {
-      list = list.filter((t) => t.category_id === historyFilters.categoryId);
-    }
-
-    // Date range filter
+  function buildApiUrl(cursor?: string): string {
+    const p = new URLSearchParams();
     const range = dateFilterToRange(historyFilters.dateFilter);
-    if (range.start) {
-      list = list.filter((t) => t.date >= range.start!);
-    }
-    if (range.end) {
-      list = list.filter((t) => t.date <= range.end!);
-    }
+    if (range.start) p.set('start_date', range.start);
+    if (range.end) p.set('end_date', range.end);
+    if (historyFilters.type !== 'ALL') p.set('type', historyFilters.type);
+    if (historyFilters.categoryId !== 'ALL') p.set('category_id', historyFilters.categoryId);
+    if (debouncedSearch.trim()) p.set('search', debouncedSearch.trim());
+    if (cursor) p.set('cursor', cursor);
+    return `/api/transactions?${p.toString()}`;
+  }
 
-    // Search query
-    if (debouncedSearch) {
-      list = list.filter(
-        (t) =>
-          (t.note && t.note.toLowerCase().includes(debouncedSearch)) ||
-          (t.category?.name && t.category.name.toLowerCase().includes(debouncedSearch))
-      );
-    }
+  let fetchRequestId = 0;
+  async function loadTransactions() {
+    if (appStore.isLoading) return;
 
-    return list;
+    const reqId = ++fetchRequestId;
+    isLoading = true;
+    nextCursor = null;
+
+    try {
+      if (appStore.user) {
+        // Logged-in mode: server-side query with active filters
+        const res = await fetch(buildApiUrl());
+        if (!res.ok) throw new Error('Gagal memuat transaksi');
+        const json = await res.json();
+        if (reqId !== fetchRequestId) return;
+
+        transactions = json.data ?? [];
+        nextCursor = json.nextCursor ?? null;
+        hasMore = json.hasMore ?? false;
+      } else {
+        // Guest mode: Dexie local IndexedDB
+        const all = await db.transactions.orderBy('date').reverse().toArray();
+        if (reqId !== fetchRequestId) return;
+
+        const catMap = appStore.categoryMap;
+        let list: Transaction[] = all.map((tx) => ({
+          ...tx,
+          category: catMap.get(tx.category_id) ?? null,
+        }));
+
+        // Type filter
+        if (historyFilters.type === 'income') {
+          list = list.filter((t) => Number(t.amount) < 0);
+        } else if (historyFilters.type === 'expense') {
+          list = list.filter((t) => Number(t.amount) > 0);
+        }
+
+        // Category filter
+        if (historyFilters.categoryId !== 'ALL') {
+          list = list.filter((t) => t.category_id === historyFilters.categoryId);
+        }
+
+        // Date range filter
+        const range = dateFilterToRange(historyFilters.dateFilter);
+        if (range.start) list = list.filter((t) => t.date >= range.start!);
+        if (range.end) list = list.filter((t) => t.date <= range.end!);
+
+        // Search query
+        if (debouncedSearch.trim()) {
+          const q = debouncedSearch.trim().toLowerCase();
+          list = list.filter(
+            (t) =>
+              (t.note && t.note.toLowerCase().includes(q)) ||
+              ((t.category?.name || catMap.get(t.category_id)?.name)?.toLowerCase().includes(q))
+          );
+        }
+
+        transactions = list;
+        hasMore = false;
+        nextCursor = null;
+      }
+    } catch {
+      toast.error('Gagal memuat riwayat transaksi');
+    } finally {
+      if (reqId === fetchRequestId) {
+        isLoading = false;
+      }
+    }
+  }
+
+  async function loadMore() {
+    if (!appStore.user || isLoadingMore || !hasMore || !nextCursor) return;
+    isLoadingMore = true;
+    try {
+      const res = await fetch(buildApiUrl(nextCursor));
+      if (!res.ok) throw new Error('Gagal memuat lebih banyak');
+      const json = await res.json();
+      const newItems: Transaction[] = json.data ?? [];
+
+      const existingIds = new Set(transactions.map((t) => t.id));
+      const deduped = newItems.filter((t) => !existingIds.has(t.id));
+
+      transactions = [...transactions, ...deduped];
+      nextCursor = json.nextCursor ?? null;
+      hasMore = json.hasMore ?? false;
+    } catch {
+      toast.error('Gagal memuat lebih banyak transaksi');
+    } finally {
+      isLoadingMore = false;
+    }
+  }
+
+  // Reactive trigger on filter or auth state change
+  $effect(() => {
+    debouncedSearch;
+    historyFilters.categoryId;
+    historyFilters.dateFilter;
+    historyFilters.type;
+    appStore.user;
+    appStore.isLoading;
+
+    loadTransactions();
   });
 
   // Group by date
@@ -63,7 +154,7 @@
     const groups: { date: string; displayDate: string; totalExpense: number; items: Transaction[] }[] = [];
     const map = new Map<string, Transaction[]>();
 
-    filteredTransactions.forEach((t) => {
+    transactions.forEach((t) => {
       const arr = map.get(t.date) || [];
       arr.push(t);
       map.set(t.date, arr);
@@ -95,6 +186,7 @@
   async function handleDelete(id: string) {
     try {
       await appStore.deleteTransaction(id);
+      transactions = transactions.filter((t) => t.id !== id);
       toast.success('Transaksi berhasil dihapus');
     } catch {
       toast.error('Gagal menghapus transaksi');
@@ -114,7 +206,7 @@
     <div class="flex justify-between items-center">
       <h1 class="font-headline text-2xl font-bold tracking-tight text-on-surface">Riwayat Transaksi</h1>
       <span class="text-xs font-semibold text-on-surface-variant/70">
-        {filteredTransactions.length} transaksi
+        {transactions.length} transaksi
       </span>
     </div>
 
@@ -123,14 +215,14 @@
       <span class="material-symbols-outlined text-on-surface-variant/50 text-xl mr-2.5">search</span>
       <input
         type="text"
-        bind:value={localSearch}
+        bind:value={historyFilters.searchQuery}
         placeholder="Cari transaksi atau catatan..."
         class="w-full bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant/40"
       />
-      {#if localSearch}
+      {#if historyFilters.searchQuery}
         <button
           type="button"
-          onclick={() => (localSearch = '')}
+          onclick={() => (historyFilters.searchQuery = '')}
           class="text-on-surface-variant/50 hover:text-on-surface"
         >
           <span class="material-symbols-outlined text-base">close</span>
@@ -180,7 +272,7 @@
 
   <!-- Transactions Grouped by Date -->
   <div class="space-y-6">
-    {#if appStore.isLoading}
+    {#if isLoading}
       {#each [1, 2, 3] as _}
         <div class="space-y-2">
           <div class="h-4 w-32 skeleton-wave rounded"></div>
@@ -225,15 +317,15 @@
       {/each}
 
       <!-- Infinite Scroll Trigger -->
-      {#if appStore.hasMore}
+      {#if hasMore}
         <div class="text-center pt-4">
           <button
             type="button"
-            onclick={() => appStore.loadMoreTransactions()}
-            disabled={appStore.isLoadingMore}
+            onclick={loadMore}
+            disabled={isLoadingMore}
             class="px-6 py-2.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-xs font-bold text-on-surface transition-all cursor-pointer disabled:opacity-50"
           >
-            {appStore.isLoadingMore ? 'Memuat lebih banyak...' : 'Muat Lebih Banyak'}
+            {isLoadingMore ? 'Memuat lebih banyak...' : 'Muat Lebih Banyak'}
           </button>
         </div>
       {/if}
