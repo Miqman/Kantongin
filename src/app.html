@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+	<meta name="theme-color" content="#0F172A" />
+	<title>Uangmu - Manajemen Keuangan Pribadi</title>
+	<meta name="description"
+		content="Aplikasi pencatatan keuangan pribadi modern, cepat, dan cerdas. Kelola anggaran, lacak pengeluaran, dan catat transaksi otomatis dengan AI." />
+	<meta name="author" content="Uangmu" />
+
+	<!-- OpenGraph / Social Media Share Preview -->
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="Uangmu - Manajemen Keuangan Pribadi Modern" />
+	<meta property="og:description"
+		content="Catat pengeluaran, kelola anggaran, dan pantau keuangan dengan mudah dan cepat." />
+	<meta property="og:image" content="/android-chrome-512x512.png" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Uangmu - Manajemen Keuangan Pribadi Modern" />
+	<meta name="twitter:description"
+		content="Catat pengeluaran, kelola anggaran, dan pantau keuangan dengan mudah dan cepat." />
+	<meta name="twitter:image" content="/android-chrome-512x512.png" />
+
+	<!-- Apple PWA Meta -->
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="apple-mobile-web-app-title" content="Uangmu" />
+
+	<link rel="icon" href="/favicon.ico" sizes="48x48" />
+	<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+	<link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+	<link rel="apple-touch-icon" href="/android-chrome-192x192.png" sizes="192x192" />
+	<link rel="manifest" href="/manifest.json" />
+	<script>
+		try {
+			var t = localStorage.getItem('theme') || 'slate-dark';
+			var el = document.documentElement;
+			var toRemove = Array.from(el.classList).filter(function (c) { return c === 'dark' || c.indexOf('theme-') === 0; });
+			toRemove.forEach(function (c) { el.classList.remove(c); });
+			if (t === 'slate-dark') { el.classList.add('dark'); }
+			else if (t !== 'slate-light') { el.classList.add('theme-' + t); }
+		} catch (_) { }
+	</script>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Manrope:wght@200..800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+		rel="stylesheet" />
+	%sveltekit.head%
+</head>
+
+<body class="font-body bg-surface text-on-surface antialiased min-h-screen" data-sveltekit-preload-data="hover">
+	<div style="display: contents">%sveltekit.body%</div>
+</body>
+
+</html>
