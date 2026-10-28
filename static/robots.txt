@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /api/
+Disallow: /riwayat
+Disallow: /tambah
+Disallow: /profil
+Disallow: /kategori
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /forgot-password

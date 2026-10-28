@@ -1,19 +1,9 @@
-import db from './dexie';
-import { logger } from './logger';
+import db from '$lib/db/dexie';
+import { logger } from '$lib/logger';
 
 /**
- * Migrates all local (IndexedDB) guest data to Supabase.
+ * Migrates all local (IndexedDB) guest data to Supabase via the API Bridge.
  * Returns the number of successfully migrated transactions.
- *
- * Optimizations vs v1:
- *  - Categories are now batch-inserted in one request instead of
- *    sequential per-category fetches, reducing migration time significantly.
- *  - All console.* calls replaced with dev-only logger.
- *
- * Rollback strategy:
- *  - Categories: we only create custom ones; matched defaults are never modified.
- *  - Transactions: if batch insert fails, we do NOT clear IndexedDB so the user
- *    keeps their data and can retry.
  */
 export async function migrateGuestToCloud(): Promise<number> {
   const localTransactions = await db.transactions.toArray();
@@ -58,13 +48,12 @@ export async function migrateGuestToCloud(): Promise<number> {
     }
   }
 
-  // ─── STEP 3: Batch-create custom categories (1 request instead of N) ─────
+  // ─── STEP 3: Batch-create custom categories ───────────────────────────────
   const createdCatIds: string[] = [];
 
   if (customCatsToCreate.length > 0) {
     logger.log(`[Sync] Creating ${customCatsToCreate.length} custom categories in batch...`);
     try {
-      // POST each in parallel (or use a batch endpoint if available)
       const results = await Promise.allSettled(
         customCatsToCreate.map((cat) =>
           fetch('/api/categories', {
@@ -106,7 +95,7 @@ export async function migrateGuestToCloud(): Promise<number> {
     created_at: tx.created_at,
   }));
 
-  // ─── STEP 5: Batch insert transactions ───────────────────────────────────
+  // ─── STEP 5: Batch insert transactions via API Bridge ─────────────────────
   const res = await fetch('/api/transactions/batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -117,7 +106,7 @@ export async function migrateGuestToCloud(): Promise<number> {
     const errBody = await res.text();
     logger.error('[Sync] Batch insert failed:', errBody);
 
-    // ── Rollback: delete any custom categories we just created ──
+    // Rollback custom categories on failure
     if (createdCatIds.length > 0) {
       logger.log(`[Sync] Rolling back ${createdCatIds.length} created categories...`);
       await Promise.allSettled(
@@ -127,13 +116,12 @@ export async function migrateGuestToCloud(): Promise<number> {
       );
     }
 
-    // Do NOT clear IndexedDB — user keeps their data for retry
     throw new Error(`Gagal migrasi transaksi ke server: ${res.status}`);
   }
 
   const result = await res.json();
   const migratedCount: number = result.count ?? 0;
-  logger.log(`[Sync] ✅ Successfully migrated ${migratedCount} transactions to Supabase.`);
+  logger.log(`[Sync] Successfully migrated ${migratedCount} transactions.`);
 
   // ─── STEP 6: Migrate budgets ──────────────────────────────────────────────
   const localBudgets = await db.budgets.toArray();
@@ -156,7 +144,7 @@ export async function migrateGuestToCloud(): Promise<number> {
     );
   }
 
-  // ─── STEP 7: Clear local IndexedDB (only after confirmed success) ─────────
+  // ─── STEP 7: Clear local IndexedDB ────────────────────────────────────────
   await db.transactions.clear();
   await db.categories.clear();
   await db.budgets.clear();
@@ -164,3 +152,7 @@ export async function migrateGuestToCloud(): Promise<number> {
 
   return migratedCount;
 }
+
+export { migrateGuestToCloud as syncGuestToCloud };
+
+
