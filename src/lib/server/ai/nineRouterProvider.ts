@@ -11,7 +11,7 @@ Your job: Parse voice transcript into a structured JSON transaction.
 Rules:
 - "amount": extract numeric value in Indonesian Rupiah (IDR). Understand Indonesian number words: "ribu" = thousand, "juta" = million, "ratus" = hundred, "lima belas ribu" = 15000, etc. Also handle English: "fifteen thousand" = 15000.
 - "transaction_type": "expense" if buying/spending/paying, "income" if receiving/salary/transfer in. Default to "expense" if unclear.
-- "category_hint": pick the MOST relevant word from the provided category list. If none match, use a descriptive keyword in Indonesian.
+- "category_hint": pick the EXACT matching name from the Available categories list. If the transaction relates to food, drinks, coffee, snacks, or restaurants, select the food & beverage category (e.g. "Makan & Minum"), NEVER "Belanja" even if the user says "beli". Only select "Belanja" for shopping/retail/groceries/goods.
 - "note": short descriptive note about the transaction (max 50 chars).
 - "date": extract if mentioned (e.g. "kemarin" = yesterday, "hari ini" = today). Use null if not mentioned.
 - "confidence": "high" if amount is clearly stated, "medium" if inferred, "low" if very unclear.
@@ -212,7 +212,8 @@ export class NineRouterProvider implements AIProvider {
           model: this.model,
           messages,
           temperature: 0.1,
-          max_tokens: timeoutMs > 30_000 ? 2048 : 1024, // 2048 for photo (more items), 1024 for voice
+          max_tokens: timeoutMs > 30_000 ? 2048 : 300, // 300 for voice (faster generation), 2048 for photo
+          reasoning_effort: 'low',
           stream: false,
           // Note: response_format not used — not all combo models support it.
           // JSON output is enforced via system prompt instructions instead.
@@ -227,8 +228,25 @@ export class NineRouterProvider implements AIProvider {
         throw new Error(`9router API error ${res.status}: ${errorText}`);
       }
 
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content;
+      const text = await res.text();
+      let content = '';
+
+      if (text.trim().startsWith('data:')) {
+        for (const line of text.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data:') && !trimmed.includes('[DONE]')) {
+            try {
+              const chunk = JSON.parse(trimmed.slice(5).trim());
+              const delta = chunk?.choices?.[0]?.delta?.content || chunk?.choices?.[0]?.message?.content;
+              if (delta) content += delta;
+            } catch {}
+          }
+        }
+      } else {
+        const data = JSON.parse(text);
+        content = data?.choices?.[0]?.message?.content || '';
+      }
+
       if (!content) throw new Error('Empty response from 9router');
       return content;
     } catch (err) {

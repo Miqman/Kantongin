@@ -30,6 +30,7 @@
   let saveMode = $state<'total' | 'items'>('total');
   let selectedCategory = $state('');
   let isSaving = $state(false);
+  let lastResult = $state<ParsedTransaction | null>(null);
 
   function matchCategory(
     hint: string | null,
@@ -37,11 +38,45 @@
     fallback: string
   ): string {
     if (!hint || categories.length === 0) return fallback;
-    const lower = hint.toLowerCase();
-    const matched = categories.find(
+    const lower = hint.toLowerCase().trim();
+
+    // 1. Exact match
+    const exact = categories.find((c) => c.name.toLowerCase() === lower);
+    if (exact) return exact.id;
+
+    // 2. Substring match
+    const substring = categories.find(
       (c) => c.name.toLowerCase().includes(lower) || lower.includes(c.name.toLowerCase())
     );
-    return matched?.id ?? fallback;
+    if (substring) return substring.id;
+
+    // 3. Word-level match (e.g. "makanan" / "minuman" matching "Makan & Minum")
+    const wordMatch = categories.find((c) => {
+      const catWords = c.name.toLowerCase().split(/[ &,/]+/);
+      return catWords.some(
+        (word) => word.length >= 3 && (lower.includes(word) || word.includes(lower))
+      );
+    });
+    if (wordMatch) return wordMatch.id;
+
+    // 4. Semantic keywords (maps food/drinks, transport, bills, etc.)
+    const semanticMap: Record<string, string[]> = {
+      makan: ['kopi', 'makan', 'minum', 'snack', 'cafe', 'resto', 'sarapan', 'siang', 'malam', 'food', 'drink', 'beverage', 'kuliner', 'jajan'],
+      transport: ['bensin', 'ojek', 'gojek', 'grab', 'parkir', 'tol', 'kereta', 'bus', 'angkot', 'taksi', 'bbm', 'pertalite', 'pertamax'],
+      belanja: ['shopee', 'tokopedia', 'baju', 'celana', 'sepatu', 'tas', 'supermarket', 'mall', 'indomaret', 'alfamart', 'sembako'],
+      tagihan: ['listrik', 'pln', 'air', 'pdam', 'wifi', 'indihome', 'pulsa', 'kuota', 'bpjs', 'pajak', 'sewa', 'kontrakan', 'cicilan'],
+      hiburan: ['nonton', 'bioskop', 'game', 'steam', 'netflix', 'spotify', 'karaoke', 'wisata', 'liburan'],
+      gaji: ['gaji', 'bonus', 'thr', 'upah', 'salary', 'payroll', 'pendapatan', 'omset'],
+    };
+
+    for (const [key, keywords] of Object.entries(semanticMap)) {
+      if (keywords.some((kw) => lower.includes(kw))) {
+        const found = categories.find((c) => c.name.toLowerCase().includes(key));
+        if (found) return found.id;
+      }
+    }
+
+    return fallback;
   }
 
   let defaultCatId = $derived(
@@ -51,8 +86,13 @@
   );
 
   $effect(() => {
-    if (defaultCatId && !selectedCategory) {
+    if (open && result && result !== lastResult) {
+      lastResult = result;
       selectedCategory = defaultCatId;
+    }
+    if (!open) {
+      lastResult = null;
+      selectedCategory = '';
     }
   });
 
