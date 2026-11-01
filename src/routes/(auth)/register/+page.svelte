@@ -150,5 +150,12 @@
       Masuk sekarang
     </a>
   </div>
+
+  <div class="mt-4 text-center text-xs text-on-surface-variant/70">
+    <a href="/landing" class="hover:text-primary transition-colors inline-flex items-center justify-center gap-1">
+      <span class="material-symbols-outlined text-sm">info</span>
+      <span>Pelajari lebih lanjut tentang Uangmu</span>
+    </a>
+  </div>
 </main>
 
