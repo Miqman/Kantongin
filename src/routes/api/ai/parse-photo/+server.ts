@@ -14,6 +14,7 @@ const bodySchema = z.object({
   mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/heic'] as const, {
     message: 'Format gambar tidak didukung. Gunakan JPEG, PNG, atau WebP.',
   }),
+  categoryNames: z.array(z.string()).optional(),
 });
 
 export const POST: RequestHandler = async (event) => {
@@ -42,14 +43,16 @@ export const POST: RequestHandler = async (event) => {
       );
     }
 
-    const { imageBase64, mimeType } = parsed.data;
+    const { imageBase64, mimeType, categoryNames: clientCategoryNames } = parsed.data;
 
-    const { data: categories } = await event.locals.supabase
-      .from('categories')
-      .select('name')
-      .or(`user_id.eq.${user.id},is_default.eq.true`);
-
-    const categoryNames = (categories ?? []).map((c: { name: string }) => c.name);
+    let categoryNames = clientCategoryNames;
+    if (!categoryNames || categoryNames.length === 0) {
+      const { data: categories } = await event.locals.supabase
+        .from('categories')
+        .select('name')
+        .or(`user_id.eq.${user.id},user_id.is.null,is_default.eq.true`);
+      categoryNames = (categories ?? []).map((c: { name: string }) => c.name);
+    }
 
     const provider = getAIProvider();
     const result = await provider.parseReceiptImage(imageBase64, mimeType, categoryNames);

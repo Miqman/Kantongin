@@ -3,6 +3,7 @@
   import AIOfflineDialog from './AIOfflineDialog.svelte';
   import AITransactionModal from './AITransactionModal.svelte';
   import { toast } from '$lib/stores/toast.svelte';
+  import { appStore } from '$lib/stores/app.svelte';
 
   interface Props {
     onPrefillForm?: (data: {
@@ -54,7 +55,10 @@
       const res = await fetch('/api/ai/parse-voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: text }),
+        body: JSON.stringify({
+          transcript: text,
+          categoryNames: appStore.categories.map((c) => c.name),
+        }),
       });
 
       if (!res.ok) {

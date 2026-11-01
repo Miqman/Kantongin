@@ -2,6 +2,7 @@
   import type { ParsedTransaction } from '$lib/types';
   import AIOfflineDialog from './AIOfflineDialog.svelte';
   import AITransactionModal from './AITransactionModal.svelte';
+  import { appStore } from '$lib/stores/app.svelte';
 
   interface Props {
     onPrefillForm?: (data: {
@@ -122,7 +123,11 @@
       const res = await fetch('/api/ai/parse-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mimeType }),
+        body: JSON.stringify({
+          imageBase64: base64,
+          mimeType,
+          categoryNames: appStore.categories.map((c) => c.name),
+        }),
       });
 
       if (!res.ok) {
