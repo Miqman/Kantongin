@@ -3,6 +3,7 @@
   import BentoFeatures from '$lib/components/landing/BentoFeatures.svelte';
   import ResizableNavbar from '$lib/components/landing/ResizableNavbar.svelte';
   import { reveal } from '$lib/actions/reveal';
+  import { page } from '$app/state';
 
   let activeFaq = $state<number | null>(null);
 
@@ -32,14 +33,80 @@
   function toggleFaq(index: number) {
     activeFaq = activeFaq === index ? null : index;
   }
+
+  const jsonLd = $derived(
+    JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebApplication',
+          '@id': `${page.url.origin}/landing#webapp`,
+          name: 'Uangmu',
+          url: `${page.url.origin}/landing`,
+          applicationCategory: 'FinanceApplication',
+          operatingSystem: 'All',
+          description:
+            'Aplikasi manajemen keuangan pribadi pintar: catat transaksi otomatis dengan AI suara & scan struk, anggaran bulanan, offline-first, dan ekspor Google Sheets.',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'IDR',
+          },
+        },
+        {
+          '@type': 'FAQPage',
+          '@id': `${page.url.origin}/landing#faq`,
+          mainEntity: FAQS.map((faq) => ({
+            '@type': 'Question',
+            name: faq.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: faq.a,
+            },
+          })),
+        },
+      ],
+    })
+  );
 </script>
 
 <svelte:head>
   <title>Uangmu - Aplikasi Manajemen Keuangan Pribadi Cerdas</title>
   <meta
     name="description"
-    content="Kelola anggaran, catat transaksi otomatis dengan AI suara & struk, dan pantau pengeluaran Anda dengan aman dan offline-first."
+    content="Kelola anggaran bulanan, catat transaksi otomatis via suara & scan struk belanja dengan AI. Gratis, aman, bebas iklan, dan offline-first."
   />
+  <meta
+    name="keywords"
+    content="aplikasi keuangan pribadi, catat keuangan, pelacak pengeluaran, budgeting app indonesia, catat struk belanja ai, input suara keuangan, offline first finance"
+  />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="{page.url.origin}/landing" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{page.url.origin}/landing" />
+  <meta property="og:title" content="Uangmu - Aplikasi Manajemen Keuangan Pribadi Cerdas" />
+  <meta
+    property="og:description"
+    content="Kelola anggaran, catat transaksi otomatis dengan AI suara & struk, aman dan offline-first."
+  />
+  <meta property="og:image" content="{page.url.origin}/android-chrome-512x512.png" />
+  <meta property="og:locale" content="id_ID" />
+  <meta property="og:site_name" content="Uangmu" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="{page.url.origin}/landing" />
+  <meta name="twitter:title" content="Uangmu - Aplikasi Manajemen Keuangan Pribadi Cerdas" />
+  <meta
+    name="twitter:description"
+    content="Kelola anggaran, catat transaksi otomatis dengan AI suara & struk, aman dan offline-first."
+  />
+  <meta name="twitter:image" content="{page.url.origin}/android-chrome-512x512.png" />
+
+  <!-- Structured Data JSON-LD (Web App & FAQ Rich Snippets) -->
+  {@html `<script type="application/ld+json">${jsonLd}<\/script>`}
 </svelte:head>
 
 <div class="min-h-screen bg-zinc-950 text-white selection:bg-amber-400/30 selection:text-amber-200 font-sans">
