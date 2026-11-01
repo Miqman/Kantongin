@@ -10,4 +10,4 @@ Allow: /login
 Allow: /register
 Allow: /forgot-password
 
-Sitemap: /sitemap.xml
+Sitemap: https://uangmu-aman.vercel.app/sitemap.xml
